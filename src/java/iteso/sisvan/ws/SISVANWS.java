@@ -39,7 +39,7 @@ public class SISVANWS {
     /**
      * Retrieves the current user
      *
-     * @param correo
+     * @param correo a electronic email that you register with your account
      * @return a json object with the user
      */
     @GET
