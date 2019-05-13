@@ -5,19 +5,22 @@
  */
 package iteso.sisvan.ws;
 
+import java.io.StringReader;
+import java.math.BigInteger;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.Produces;
-import javax.ws.rs.GET;
 import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.sql.*;
-import java.util.Arrays;
 import javax.json.JsonObjectBuilder;
+import javax.json.JsonReader;
+import javax.ws.rs.POST;
 
 /**
  * REST Web Service
@@ -37,19 +40,62 @@ public class SISVANWS {
     }
 
     /**
-     * Retrieves the current user
+     * Regresar el nombre del usuario con el correo registrado
      *
-     * @param correo a electronic email that you register with your account
+     * @param requestBody contiene el correo electronico y la contraseña del usuario
      * @return a json object with the user
      */
-    @GET
+    @POST
     @Produces(MediaType.APPLICATION_JSON)
-    @Path("/auth/getUserName/{correo}")
-    public Response getUserName(@PathParam("correo") String correo) {
+    @Path("/auth/getSession")
+    public Response getSession(String requestBody) {
         JsonObjectBuilder jsonObjectBuilder
                 = Json.createObjectBuilder();
         JsonObject response = null;
         Connection dbConnection = null;
+        String correo = null, contrasenia = null;
+        
+        if(!requestBody.equals("")){
+            try{
+                JsonReader bodyReader = Json.createReader(new StringReader(requestBody));
+                JsonObject datosEntrada = bodyReader.readObject();
+                bodyReader.close();
+                
+                if(!datosEntrada.containsKey("usuario") || !datosEntrada.containsKey("contrasenia"))
+                    throw new Exception("Datos incompletos.");
+                
+                correo = datosEntrada.getString("usuario");
+                contrasenia = datosEntrada.getString("contrasenia");
+                
+            }catch(Exception ex){
+                jsonObjectBuilder.add("error", "Favor de proporcionar todos los datos.");
+                jsonObjectBuilder.add("mensaje", ex.getMessage());
+                response = jsonObjectBuilder.build();
+                return Response.ok(response.toString()).build();
+            }
+            
+        }
+        
+        //Procesando la conversion de la contraseña
+        try{
+            MessageDigest digest = MessageDigest.getInstance("SHA-512");
+            byte[] messageDigest = digest.digest(contrasenia.getBytes());
+            BigInteger bInteger = new BigInteger(1, messageDigest); 
+            String textoDisp = bInteger.toString(16);
+            
+            while (textoDisp.length() < 32) { 
+                textoDisp = "0" + textoDisp; 
+            }
+            
+            contrasenia = textoDisp;
+        }catch(NoSuchAlgorithmException ex){
+            jsonObjectBuilder.add("error", "Error al intentar convertir la contraseña.");
+            jsonObjectBuilder.add("mensaje", ex.getMessage());
+            response = jsonObjectBuilder.build();
+            return Response.ok(response.toString()).build();
+        }
+        
+        
 
         //Encontrar la clase para poder realizar la conexión con RDS
         try {
@@ -74,19 +120,20 @@ public class SISVANWS {
 
         //Obteniendo la información de la base de datos
         try {
-            String query = "SELECT nombre FROM usuarios WHERE correo = ?";
+            String query = "SELECT nombre FROM usuarios WHERE correo = ? AND contrasenia = ?";
             PreparedStatement statement = dbConnection.prepareStatement(query);
             statement.setString(1, correo);
+            statement.setString(2, contrasenia);
             ResultSet result = statement.executeQuery();
 
             if (result.next()) {
                 jsonObjectBuilder.add("nombre", result.getString(1));
             } else {
-                jsonObjectBuilder.add("error", "No existe ningun usuario con el correo proporcionado.");
+                jsonObjectBuilder.add("error", "Error de autenticación.");
             }
-            
+
             response = jsonObjectBuilder.build();
-            
+
             statement.close();
             statement.close();
             dbConnection.close();
