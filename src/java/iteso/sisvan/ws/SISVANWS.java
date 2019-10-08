@@ -256,6 +256,105 @@ public class SISVANWS {
     
     @POST
     @Produces(MediaType.APPLICATION_JSON)
+    @Path("/alumnos/obtenerHistoricoEstatura")
+    public Response obtenerHistoricoEstatura(String requestBody) {
+        Connection dbConnection;
+        PreparedStatement statement;
+        ResultSet sqlResult;
+        JsonObjectBuilder jsonObjectBuilder
+                = Json.createObjectBuilder();
+        JsonObject response;
+        boolean hayInformacion = false;
+        String idAlumno;
+
+        if (!requestBody.equals("")) {
+            try {
+                JsonReader bodyReader = Json.createReader(new StringReader(requestBody));
+                JsonObject datosEntrada = bodyReader.readObject();
+                bodyReader.close();
+
+                if (!datosEntrada.containsKey("id_alumno")) {
+                    throw new Exception("Datos incompletos.");
+                }
+
+                idAlumno = datosEntrada.getString("id_alumno");
+
+            } catch (Exception ex) {
+                jsonObjectBuilder.add("error", "Favor de proporcionar todos los datos.");
+                jsonObjectBuilder.add("mensaje", ex.getMessage());
+                response = jsonObjectBuilder.build();
+                return Response.ok(response.toString()).build();
+            }
+            try {
+                dbContext = new InitialContext();
+                DataSource datasource = (DataSource) dbContext.lookup(DB_JNDI);
+                dbConnection = datasource.getConnection();
+
+                String consultaMediciones = "SELECT fecha, estatura, nivel_0/100 as ideal FROM datos" + "\n"
+                                          + "INNER JOIN alumnos ON alumnos.id_alumno = datos.id_alumno" + "\n"
+                                          + "INNER JOIN oms_puntajes_z_estatura ON id_percentil = concat(alumnos.sexo,timestampdiff(MONTH, alumnos.fecha_nac, datos.fecha))" + "\n"
+                                          + "WHERE datos.id_alumno = ?";
+
+                statement = dbConnection.prepareStatement(consultaMediciones);
+                statement.setString(1, idAlumno);
+                sqlResult = statement.executeQuery();
+
+                JsonArrayBuilder constructorArregloJSON
+                        = Json.createArrayBuilder();
+                int contador = 0;
+
+                while (sqlResult.next()) {
+                    if (!hayInformacion) {
+                        hayInformacion = true;
+                    }
+                    int numColumnas = sqlResult.getMetaData().getColumnCount();
+                    JsonObjectBuilder alumno
+                            = Json.createObjectBuilder();
+
+                    for (int indice = 2; indice <= numColumnas; indice++) {
+                        String nombreColumna = sqlResult.getMetaData().getColumnLabel(indice).toLowerCase();
+                        SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
+                        if (sqlResult.getObject(indice) != null) {
+                            double numero = sqlResult.getDouble(indice);
+                            numero = Math.round(numero);
+                            alumno.add("id", contador++);
+                            alumno.add("serie", nombreColumna);
+                            alumno.add("fecha", dateFormat.format(sqlResult.getDate(1)));
+                            alumno.add("valor", numero);
+                            constructorArregloJSON.add(alumno);
+                        } else {
+                            alumno.add(nombreColumna, "");
+                        }
+                    }
+                }
+
+                if (hayInformacion) {
+                    jsonObjectBuilder.add("mediciones", constructorArregloJSON);
+                } else {
+                    jsonObjectBuilder.add("error", "No hay datos.");
+                }
+
+                response = jsonObjectBuilder.build();
+            } catch (NamingException ex) {
+                jsonObjectBuilder.add("error", "Error al intentar obtener el nommbre de la conexion de la base de datos.");
+                jsonObjectBuilder.add("mensaje", ex.getMessage());
+                response = jsonObjectBuilder.build();
+                return Response.ok(response.toString()).build();
+            } catch (SQLException ex) {
+                jsonObjectBuilder.add("error", "Error al intentar ejecutar la consulta en la base de datos.");
+                jsonObjectBuilder.add("mensaje", ex.getMessage());
+                response = jsonObjectBuilder.build();
+                return Response.ok(response.toString()).build();
+            }
+        } else {
+            jsonObjectBuilder.add("error", "Favor de proporcionar todos los datos.");
+            response = jsonObjectBuilder.build();
+        }
+        return Response.ok(response.toString()).build();
+    }
+    
+    @POST
+    @Produces(MediaType.APPLICATION_JSON)
     @Path("/alumnos/obtenerMediciones")
     public Response obtenerMediciones(String requestBody) {
         Connection dbConnection;
