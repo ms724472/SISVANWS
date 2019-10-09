@@ -315,7 +315,7 @@ public class SISVANWS {
                         String nombreColumna = sqlResult.getMetaData().getColumnLabel(indice).toLowerCase();
                         SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
                         if (sqlResult.getObject(indice) != null) {
-                            double numero = sqlResult.getDouble(indice);
+                            double numero = sqlResult.getDouble(indice) * 100;
                             numero = Math.round(numero);
                             alumno.add("id", contador++);
                             alumno.add("serie", nombreColumna);
@@ -409,21 +409,27 @@ public class SISVANWS {
                     JsonObjectBuilder alumno
                             = Json.createObjectBuilder();
 
-                    for (int indice = 2; indice <= numColumnas; indice++) {
+                    for (int indice = 1; indice <= numColumnas; indice++) {
                         String nombreColumna = sqlResult.getMetaData().getColumnLabel(indice).toLowerCase();
-                        SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
                         if (sqlResult.getObject(indice) != null) {
-                            double numero = sqlResult.getDouble(indice) * 100;
-                            numero = Math.round(numero);
-                            alumno.add("id", contador++);
-                            alumno.add("serie", nombreColumna);
-                            alumno.add("fecha", dateFormat.format(sqlResult.getDate(1)));
-                            alumno.add("valor", !nombreColumna.equals("estatura") ? (numero / 100) : numero);
-                            constructorArregloJSON.add(alumno);
+                            Object valor = sqlResult.getObject(indice);
+                            if (valor instanceof String) {
+                                alumno.add(nombreColumna, String.valueOf(valor));
+                            } else if (valor instanceof Date) {
+                                SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
+                                alumno.add(nombreColumna, dateFormat.format(sqlResult.getDate(indice)));
+                            } else if (valor instanceof Integer) {
+                                alumno.add(nombreColumna, sqlResult.getInt(indice));
+                            } else {
+                                double numero = sqlResult.getDouble(indice) * 100;
+                                numero = Math.round(numero);
+                                alumno.add(nombreColumna, (numero / 100));
+                            }
                         } else {
                             alumno.add(nombreColumna, "");
                         }
                     }
+                    constructorArregloJSON.add(alumno);
                 }
 
                 if (hayInformacion) {
@@ -548,6 +554,278 @@ public class SISVANWS {
                 response = jsonObjectBuilder.build();
             } catch (NamingException ex) {
                 jsonObjectBuilder.add("error", "Error al intentar obtener el nommre de la conexion de la base de datos.");
+                jsonObjectBuilder.add("mensaje", ex.getMessage());
+                response = jsonObjectBuilder.build();
+                return Response.ok(response.toString()).build();
+            } catch (SQLException ex) {
+                jsonObjectBuilder.add("error", "Error al intentar ejecutar la consulta en la base de datos.");
+                jsonObjectBuilder.add("mensaje", ex.getMessage());
+                response = jsonObjectBuilder.build();
+                return Response.ok(response.toString()).build();
+            }
+        } else {
+            jsonObjectBuilder.add("error", "Favor de proporcionar todos los datos.");
+            response = jsonObjectBuilder.build();
+        }
+        return Response.ok(response.toString()).build();
+    }
+    
+    @POST
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/alumnos/agregarAlumno")
+    public Response agregarAlumno(String requestBody) {
+        Connection dbConnection;
+        PreparedStatement statement;
+        boolean sqlResult;
+        JsonObjectBuilder jsonObjectBuilder
+                = Json.createObjectBuilder();
+        JsonObject response;
+        boolean hayInformacion = false;
+        String idAlumno, nombre, apellidoP, apellidoM, sexo, fechaNac;
+        if (!requestBody.equals("")) {
+            try {
+                JsonReader bodyReader = Json.createReader(new StringReader(requestBody));
+                JsonObject datosEntrada = bodyReader.readObject();
+                bodyReader.close();
+
+                if (!datosEntrada.containsKey("id_alumno") || 
+                    !datosEntrada.containsKey("nombre") ||
+                    !datosEntrada.containsKey("apellido_p") ||
+                    !datosEntrada.containsKey("apellido_m") ||
+                    !datosEntrada.containsKey("sexo") ||
+                    !datosEntrada.containsKey("fecha_nac")) {
+                    throw new Exception("Datos incompletos.");
+                }
+
+                idAlumno = datosEntrada.getString("id_alumno");
+                nombre = datosEntrada.getString("nombre");
+                apellidoP = datosEntrada.getString("apellido_p");
+                apellidoM = datosEntrada.getString("apellido_m");
+                sexo = datosEntrada.getString("sexo");
+                fechaNac = datosEntrada.getString("fecha_nac");
+
+            } catch (Exception ex) {
+                jsonObjectBuilder.add("error", "Favor de proporcionar todos los datos.");
+                jsonObjectBuilder.add("mensaje", ex.getMessage());
+                response = jsonObjectBuilder.build();
+                return Response.ok(response.toString()).build();
+            }
+
+            //Inicializando la conexión a la base de datos
+            try {
+                dbContext = new InitialContext();
+                DataSource datasource = (DataSource) dbContext.lookup(DB_JNDI);
+                dbConnection = datasource.getConnection();
+
+                String consultaDatos = "INSERT INTO alumnos(id_alumno, " + "\n"
+                        + "nombre," + "\n"
+                        + "apellido_p," + "\n"
+                        + "apellido_m," + "\n"
+                        + "sexo," + "\n"
+                        + "fecha_nac," + "\n"
+                        + "id_grupo)" + "\n"
+                        + "VALUES(?,?,?,?,?,?,8)";
+
+                statement = dbConnection.prepareStatement(consultaDatos);
+                statement.setString(1, idAlumno);
+                statement.setString(2, nombre);
+                statement.setString(3, apellidoP);
+                statement.setString(4, apellidoM);
+                statement.setString(5, sexo);
+                statement.setString(6, fechaNac);
+                sqlResult = statement.execute();
+
+                JsonArrayBuilder constructorArregloJSON
+                        = Json.createArrayBuilder();
+
+                jsonObjectBuilder.add("status", sqlResult ? "exito" : "fallo");
+
+                response = jsonObjectBuilder.build();
+            } catch (NamingException ex) {
+                jsonObjectBuilder.add("error", "Error al intentar obtener el nommre de la conexion de la base de datos.");
+                jsonObjectBuilder.add("mensaje", ex.getMessage());
+                response = jsonObjectBuilder.build();
+                return Response.ok(response.toString()).build();
+            } catch (SQLException ex) {
+                jsonObjectBuilder.add("error", "Error al intentar ejecutar la consulta en la base de datos.");
+                jsonObjectBuilder.add("mensaje", ex.getMessage());
+                response = jsonObjectBuilder.build();
+                return Response.ok(response.toString()).build();
+            }
+        } else {
+            jsonObjectBuilder.add("error", "Favor de proporcionar todos los datos.");
+            response = jsonObjectBuilder.build();
+        }
+        return Response.ok(response.toString()).build();
+    }
+    
+    @POST
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/alumnos/agregarMedicion")
+    public Response agregarMedicion(String requestBody) {
+        Connection dbConnection;
+        PreparedStatement statement;
+        boolean sqlResult;
+        JsonObjectBuilder jsonObjectBuilder
+                = Json.createObjectBuilder();
+        JsonObject response;
+        boolean hayInformacion = false;
+        String idAlumno, fecha, masa, estatura;
+        if (!requestBody.equals("")) {
+            try {
+                JsonReader bodyReader = Json.createReader(new StringReader(requestBody));
+                JsonObject datosEntrada = bodyReader.readObject();
+                bodyReader.close();
+
+                if (!datosEntrada.containsKey("id_alumno") || 
+                    !datosEntrada.containsKey("fecha") ||
+                    !datosEntrada.containsKey("masa") ||
+                    !datosEntrada.containsKey("estatura")) {
+                    throw new Exception("Datos incompletos.");
+                }
+
+                idAlumno = datosEntrada.getString("id_alumno");
+                fecha = datosEntrada.getString("fecha");
+                masa = datosEntrada.getString("masa");
+                estatura = datosEntrada.getString("estatura");
+
+            } catch (Exception ex) {
+                jsonObjectBuilder.add("error", "Favor de proporcionar todos los datos.");
+                jsonObjectBuilder.add("mensaje", ex.getMessage());
+                response = jsonObjectBuilder.build();
+                return Response.ok(response.toString()).build();
+            }
+
+            //Inicializando la conexión a la base de datos
+            try {
+                dbContext = new InitialContext();
+                DataSource datasource = (DataSource) dbContext.lookup(DB_JNDI);
+                dbConnection = datasource.getConnection();
+
+                String consultaDatos = "INSERT INTO datos(id_alumno, " + "\n"
+                        + "fecha," + "\n"
+                        + "masa," + "\n"
+                        + "estatura)" + "\n"
+                        + "VALUES(?,?,?,?)";
+
+                statement = dbConnection.prepareStatement(consultaDatos);
+                statement.setString(1, idAlumno);
+                statement.setString(2, fecha);
+                statement.setString(3, masa);
+                statement.setString(4, estatura);
+                sqlResult = statement.execute();
+
+                JsonArrayBuilder constructorArregloJSON
+                        = Json.createArrayBuilder();
+
+                jsonObjectBuilder.add("status", sqlResult ? "exito" : "fallo");
+
+                response = jsonObjectBuilder.build();
+            } catch (NamingException ex) {
+                jsonObjectBuilder.add("error", "Error al intentar obtener el nommre de la conexion de la base de datos.");
+                jsonObjectBuilder.add("mensaje", ex.getMessage());
+                response = jsonObjectBuilder.build();
+                return Response.ok(response.toString()).build();
+            } catch (SQLException ex) {
+                jsonObjectBuilder.add("error", "Error al intentar ejecutar la consulta en la base de datos.");
+                jsonObjectBuilder.add("mensaje", ex.getMessage());
+                response = jsonObjectBuilder.build();
+                return Response.ok(response.toString()).build();
+            }
+        } else {
+            jsonObjectBuilder.add("error", "Favor de proporcionar todos los datos.");
+            response = jsonObjectBuilder.build();
+        }
+        return Response.ok(response.toString()).build();
+    }
+    
+     @POST
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/alumnos/obtenerPuntajesZ")
+    public Response obtenerPuntajesZ(String requestBody) {
+        Connection dbConnection;
+        PreparedStatement statement;
+        ResultSet sqlResult;
+        JsonObjectBuilder jsonObjectBuilder
+                = Json.createObjectBuilder();
+        JsonObject response;
+        boolean hayInformacion = false;
+        String sexo;
+
+        if (!requestBody.equals("")) {
+            try {
+                JsonReader bodyReader = Json.createReader(new StringReader(requestBody));
+                JsonObject datosEntrada = bodyReader.readObject();
+                bodyReader.close();
+
+                if (!datosEntrada.containsKey("sexo")) {
+                    throw new Exception("Datos incompletos.");
+                }
+
+                sexo = datosEntrada.getString("sexo");
+
+            } catch (Exception ex) {
+                jsonObjectBuilder.add("error", "Favor de proporcionar todos los datos.");
+                jsonObjectBuilder.add("mensaje", ex.getMessage());
+                response = jsonObjectBuilder.build();
+                return Response.ok(response.toString()).build();
+            }
+            try {
+                dbContext = new InitialContext();
+                DataSource datasource = (DataSource) dbContext.lookup(DB_JNDI);
+                dbConnection = datasource.getConnection();
+
+                String consultaMediciones = "SELECT replace(id_percentil, '?', '') as mes, \n"
+                                          + "nivel_n3, \n"
+                                          + "nivel_n2, \n"
+                                          + "nivel_n1, \n"
+                                          + "nivel_0, \n"
+                                          + "nivel_p1, \n"
+                                          + "nivel_p2, \n"
+                                          + "nivel_p3 FROM \n"
+                                          + "oms_puntajes_z_masa WHERE id_percentil LIKE('%?%')";
+
+                statement = dbConnection.prepareStatement(consultaMediciones);
+                statement.setString(1, sexo);
+                statement.setString(2, sexo);
+                sqlResult = statement.executeQuery();
+
+                JsonArrayBuilder constructorArregloJSON
+                        = Json.createArrayBuilder();
+                int contador = 0;
+
+                while (sqlResult.next()) {
+                    if (!hayInformacion) {
+                        hayInformacion = true;
+                    }
+                    int numColumnas = sqlResult.getMetaData().getColumnCount();
+                    JsonObjectBuilder percentil
+                            = Json.createObjectBuilder();
+
+                    for (int indice = 2; indice <= numColumnas; indice++) {
+                        String nombreColumna = sqlResult.getMetaData().getColumnLabel(indice).toLowerCase();
+                        if (sqlResult.getObject(indice) != null) {
+                            double numero = sqlResult.getDouble(indice);
+                            percentil.add("id", contador++);
+                            percentil.add("serie", nombreColumna);
+                            percentil.add("mes", sqlResult.getString(1));
+                            percentil.add("valor", numero);
+                            constructorArregloJSON.add(percentil);
+                        } else {
+                            percentil.add(nombreColumna, "");
+                        }
+                    }
+                }
+
+                if (hayInformacion) {
+                    jsonObjectBuilder.add("mediciones", constructorArregloJSON);
+                } else {
+                    jsonObjectBuilder.add("error", "No hay datos.");
+                }
+
+                response = jsonObjectBuilder.build();
+            } catch (NamingException ex) {
+                jsonObjectBuilder.add("error", "Error al intentar obtener el nommbre de la conexion de la base de datos.");
                 jsonObjectBuilder.add("mensaje", ex.getMessage());
                 response = jsonObjectBuilder.build();
                 return Response.ok(response.toString()).build();
