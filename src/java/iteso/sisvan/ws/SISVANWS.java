@@ -18,6 +18,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.sql.*;
 import java.text.SimpleDateFormat;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObjectBuilder;
 import javax.json.JsonReader;
@@ -137,8 +139,7 @@ public class SISVANWS {
                 }
 
                 response = jsonObjectBuilder.build();
-
-                statement.close();
+                result.close();
                 statement.close();
                 dbConnection.close();
             } catch (SQLException ex) {
@@ -236,6 +237,9 @@ public class SISVANWS {
                 }
 
                 response = jsonObjectBuilder.build();
+                sqlResult.close();
+                statement.close();
+                dbConnection.close();
             } catch (NamingException ex) {
                 jsonObjectBuilder.add("error", "Error al intentar obtener el nommbre de la conexion de la base de datos.");
                 jsonObjectBuilder.add("mensaje", ex.getMessage());
@@ -335,6 +339,9 @@ public class SISVANWS {
                 }
 
                 response = jsonObjectBuilder.build();
+                sqlResult.close();
+                statement.close();
+                dbConnection.close();
             } catch (NamingException ex) {
                 jsonObjectBuilder.add("error", "Error al intentar obtener el nommbre de la conexion de la base de datos.");
                 jsonObjectBuilder.add("mensaje", ex.getMessage());
@@ -439,6 +446,9 @@ public class SISVANWS {
                 }
 
                 response = jsonObjectBuilder.build();
+                sqlResult.close();
+                statement.close();
+                dbConnection.close();
             } catch (NamingException ex) {
                 jsonObjectBuilder.add("error", "Error al intentar obtener el nommre de la conexion de la base de datos.");
                 jsonObjectBuilder.add("mensaje", ex.getMessage());
@@ -552,6 +562,9 @@ public class SISVANWS {
                 }
 
                 response = jsonObjectBuilder.build();
+                sqlResult.close();
+                statement.close();
+                dbConnection.close();
             } catch (NamingException ex) {
                 jsonObjectBuilder.add("error", "Error al intentar obtener el nommre de la conexion de la base de datos.");
                 jsonObjectBuilder.add("mensaje", ex.getMessage());
@@ -641,6 +654,8 @@ public class SISVANWS {
                 jsonObjectBuilder.add("status", sqlResult ? "exito" : "fallo");
 
                 response = jsonObjectBuilder.build();
+                statement.close();
+                dbConnection.close();
             } catch (NamingException ex) {
                 jsonObjectBuilder.add("error", "Error al intentar obtener el nommre de la conexion de la base de datos.");
                 jsonObjectBuilder.add("mensaje", ex.getMessage());
@@ -721,6 +736,9 @@ public class SISVANWS {
                 jsonObjectBuilder.add("status", sqlResult ? "exito" : "fallo");
 
                 response = jsonObjectBuilder.build();
+                
+                statement.close();
+                dbConnection.close();
             } catch (NamingException ex) {
                 jsonObjectBuilder.add("error", "Error al intentar obtener el nommre de la conexion de la base de datos.");
                 jsonObjectBuilder.add("mensaje", ex.getMessage());
@@ -743,14 +761,15 @@ public class SISVANWS {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/alumnos/obtenerPuntajesZ")
     public Response obtenerPuntajesZ(String requestBody) {
-        Connection dbConnection;
-        PreparedStatement statement;
+        Connection dbConnection = null;
+        PreparedStatement statement = null;
         ResultSet sqlResult;
         JsonObjectBuilder jsonObjectBuilder
                 = Json.createObjectBuilder();
         JsonObject response;
         boolean hayInformacion = false;
         String sexo;
+        DataSource datasource = null;
 
         if (!requestBody.equals("")) {
             try {
@@ -772,10 +791,10 @@ public class SISVANWS {
             }
             try {
                 dbContext = new InitialContext();
-                DataSource datasource = (DataSource) dbContext.lookup(DB_JNDI);
+                datasource = (DataSource) dbContext.lookup(DB_JNDI);
                 dbConnection = datasource.getConnection();
 
-                String consultaMediciones = "SELECT replace(id_percentil, '?', '') as mes, \n"
+                String consultaMediciones = "SELECT cast(replace(id_percentil, ?, '') as unsigned) as mes, \n"
                                           + "nivel_n3, \n"
                                           + "nivel_n2, \n"
                                           + "nivel_n1, \n"
@@ -783,11 +802,11 @@ public class SISVANWS {
                                           + "nivel_p1, \n"
                                           + "nivel_p2, \n"
                                           + "nivel_p3 FROM \n"
-                                          + "oms_puntajes_z_masa WHERE id_percentil LIKE('%?%')";
+                                          + "oms_puntajes_z_masa WHERE id_percentil LIKE('%"+ sexo + "%') \n"
+                                          + "ORDER BY mes";
 
                 statement = dbConnection.prepareStatement(consultaMediciones);
                 statement.setString(1, sexo);
-                statement.setString(2, sexo);
                 sqlResult = statement.executeQuery();
 
                 JsonArrayBuilder constructorArregloJSON
@@ -824,14 +843,25 @@ public class SISVANWS {
                 }
 
                 response = jsonObjectBuilder.build();
+                sqlResult.close();
+                statement.close();
+                dbConnection.close();
             } catch (NamingException ex) {
                 jsonObjectBuilder.add("error", "Error al intentar obtener el nommbre de la conexion de la base de datos.");
                 jsonObjectBuilder.add("mensaje", ex.getMessage());
                 response = jsonObjectBuilder.build();
                 return Response.ok(response.toString()).build();
             } catch (SQLException ex) {
-                jsonObjectBuilder.add("error", "Error al intentar ejecutar la consulta en la base de datos.");
+                jsonObjectBuilder.add("error", "Error al intentar ejecutar la consulta en la base de datos desde puntajes z.");
                 jsonObjectBuilder.add("mensaje", ex.getMessage());
+                try {
+                    dbConnection.close();
+                    statement.close();
+                } catch (SQLException ex1) {
+                    jsonObjectBuilder.add("error", "Error al intentar ejecutar la consulta en la base de datos desde puntajes z.");
+                    jsonObjectBuilder.add("mensaje", ex.getMessage());
+                }
+                
                 response = jsonObjectBuilder.build();
                 return Response.ok(response.toString()).build();
             }
