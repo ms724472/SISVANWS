@@ -269,7 +269,7 @@ public class SISVANWS {
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    @Path("/estadisticas/obtenerPuntajesZ/{sexo}")
+    @Path("/estadisticas/obtenerPuntajesZMasa/{sexo}")
     public Response obtenerPuntajesZMasa(@PathParam("sexo") String sexo) {
         String query = "SELECT cast(replace(id_percentil, ?, '') as unsigned) as mes, \n"
                 + "nivel_n3, \n"
