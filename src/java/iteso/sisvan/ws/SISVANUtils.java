@@ -71,7 +71,7 @@ public class SISVANUtils {
 
                 int columnCount = 1;
                 for (String nombreColumna : nombresColumnas) {
-                    statement.setString(columnCount, columnasConValores.get(nombreColumna));
+                    statement.setString(columnCount++, columnasConValores.get(nombreColumna));
                 }
 
                 sqlResult = statement.execute();
