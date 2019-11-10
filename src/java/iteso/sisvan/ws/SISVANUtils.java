@@ -46,7 +46,7 @@ public class SISVANUtils {
                     if (!datosEntrada.containsKey(nombreColumna)) {
                         throw new Exception("Datos incompletos.");
                     }
-                    columnasConValores.put(nombreColumna, datosEntrada.getString("id_alumno"));
+                    columnasConValores.put(nombreColumna, datosEntrada.getString(nombreColumna));
                 }
             } catch (Exception ex) {
                 jsonObjectBuilder.add("error", "Favor de proporcionar todos los datos.");
@@ -69,9 +69,9 @@ public class SISVANUtils {
             try (Connection dbConnection = datasource.getConnection();
                     PreparedStatement statement = dbConnection.prepareStatement(query)) {
 
-                int columnCount = 1;
+                int indiceColumna = 1;
                 for (String nombreColumna : nombresColumnas) {
-                    statement.setString(columnCount++, columnasConValores.get(nombreColumna));
+                    statement.setString(indiceColumna++, columnasConValores.get(nombreColumna));
                 }
 
                 sqlResult = statement.execute();
