@@ -79,6 +79,25 @@ public class SISVANWS {
 
         return Response.ok(SISVANUtils.insertarNuevoDatoEnBD(cuerpoPeticion, nombresColumnas, query).toString()).build();
     }
+    
+    /**
+     * Mostrar todos los alumnos con el nombre o apellido especificado
+     *
+     * @param nombre la palabra a buscar en el nombre o apellido
+     * @return json con toda la informacion de la base de datos
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/alumnos/buscarPorNombre/{nombre}")
+    public Response buscarPorNombre(@PathParam("nombre") String nombre) {
+        String query = "SELECT id_alumno, concat(alumnos.nombre, ' ', apellido_p, ' ', apellido_m) as nombre_completo, escuelas.nombre as nombre_escuela\n"
+                + "FROM alumnos \n"
+                + "INNER JOIN grupos ON alumnos.id_grupo = grupos.id_grupo \n"
+                + "INNER JOIN escuelas ON grupos.id_escuela = escuelas.id_escuela\n"
+                + "WHERE alumnos.nombre like '%" + nombre + "%' OR apellido_p like '%" + nombre + "%' OR apellido_m like '%" + nombre + "%';";
+
+        return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, nombre, "alumnos", false).toString()).build();
+    }
 
     /**
      * Regresar el nombre del usuario con el correo registrado
@@ -199,7 +218,36 @@ public class SISVANWS {
                 + "AND grupos.id_grupo = alumnos.id_grupo" + "\n"
                 + "AND grupos.id_escuela = escuelas.id_escuela";
 
-        return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, idAlumno, "datos").toString()).build();
+        return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, idAlumno, "datos", true).toString()).build();
+    }
+    
+    /**
+     * Obtener toda la lista de escuelas
+     *
+     * @return json con toda la informacion de la base de datos
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/obtenerEscuelas")
+    public Response obtenerEscuelas() {
+        String query = "SELECT id_escuela, nombre FROM escuelas";
+
+        return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, "", "escuelas", false).toString()).build();
+    }
+    
+    /**
+     * Obtener toda la lista de grupos por escuela
+     *
+     * @param idEscuela identificador unico de la escuela
+     * @return json con toda la informacion de la base de datos
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/escuelas/obtenerGrupos/{idEscuela}")
+    public Response obtenerGrupos(@PathParam("idEscuela") String idEscuela) {
+        String query = "SELECT id_grupo, concat(grado, ' ', letra) as grupo FROM grupos WHERE id_escuela = ?";
+
+        return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, idEscuela, "escuelas", true).toString()).build();
     }
 
     /**
@@ -258,9 +306,15 @@ public class SISVANWS {
                 + "FROM datos" + "\n"
                 + "WHERE id_alumno = ?";
 
-        return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, idAlumno, "mediciones").toString()).build();
+        return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, idAlumno, "mediciones", true).toString()).build();
     }
-    
+
+    /**
+     * Obtener los porcentajes de alumnos de cada escuela
+     *
+     * @param id_escuela identificador unico de la escuela
+     * @return json con toda la informacion de la base de datos
+     */
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/escolares/obtenerPorcentajesEscuela/{id_escuela}")
@@ -277,7 +331,13 @@ public class SISVANWS {
 
         return Response.ok(SISVANUtils.generarJSONGraficoPastel(query, id_escuela, "escuela").toString()).build();
     }
-    
+
+    /**
+     * Obtener los porcentajes de alumnos de cada grupo
+     *
+     * @param id_grupo identificador unico del grupo
+     * @return json con toda la informacion de la base de datos
+     */
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/escolares/obtenerPorcentajesGrupo/{id_grupo}")

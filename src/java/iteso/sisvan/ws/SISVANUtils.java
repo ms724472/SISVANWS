@@ -222,7 +222,7 @@ public class SISVANUtils {
         return response;
     }
 
-    public static JsonObject generarJSONMultiTipoDatos(String query, String parameter, String raiz) {
+    public static JsonObject generarJSONMultiTipoDatos(String query, String parameter, String raiz, boolean tieneParametro) {
         DataSource datasource;
         JsonObjectBuilder jsonObjectBuilder
                 = Json.createObjectBuilder();
@@ -242,7 +242,9 @@ public class SISVANUtils {
         try (Connection dbConnection = datasource.getConnection();
                 PreparedStatement statement = dbConnection.prepareStatement(query)) {
 
-            statement.setString(1, parameter);
+            if(tieneParametro){
+                statement.setString(1, parameter);
+            }
 
             try (ResultSet result = statement.executeQuery()) {
                 JsonArrayBuilder constructorArregloJSON
