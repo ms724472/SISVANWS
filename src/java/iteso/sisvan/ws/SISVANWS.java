@@ -260,6 +260,40 @@ public class SISVANWS {
 
         return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, idAlumno, "mediciones").toString()).build();
     }
+    
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/escolares/obtenerPorcentajesEscuela/{id_escuela}")
+    public Response obtenerPorcentajesEscuela(@PathParam("id_escuela") String id_escuela) {
+        String query = "SELECT concat('Escuela ', id_grupo) as grupo, diagnosticar_alumnos(concat(subdatos.sexo, meses), masa) as diagnostico, COUNT(*) as value \n"
+                + "FROM (SELECT alumnos.id_grupo, alumnos.id_alumno, ROUND(masa) as masa, timestampdiff(MONTH, alumnos.fecha_nac, d.fecha) as meses, sexo FROM datos d INNER JOIN alumnos\n"
+                + "ON alumnos.id_alumno = d.id_alumno\n"
+                + "WHERE d.fecha = (\n"
+                + "SELECT MAX(d2.fecha)\n"
+                + "FROM datos d2\n"
+                + "WHERE d.id_alumno = d2.id_alumno \n"
+                + ") AND id_grupo IN (SELECT id_grupo FROM grupos WHERE id_escuela = ?)) subdatos\n"
+                + "GROUP BY diagnostico;";
+
+        return Response.ok(SISVANUtils.generarJSONGraficoPastel(query, id_escuela, "escuela").toString()).build();
+    }
+    
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/escolares/obtenerPorcentajesGrupo/{id_grupo}")
+    public Response obtenerPorcentajesGrupo(@PathParam("id_grupo") String id_grupo) {
+        String query = "SELECT concat('Grupo ', id_grupo) as grupo, diagnosticar_alumnos(concat(subdatos.sexo, meses), masa) as diagnostico, COUNT(*) as value \n"
+                + "FROM (SELECT alumnos.id_grupo, alumnos.id_alumno, ROUND(masa) as masa, timestampdiff(MONTH, alumnos.fecha_nac, d.fecha) as meses, sexo FROM datos d INNER JOIN alumnos\n"
+                + "ON alumnos.id_alumno = d.id_alumno\n"
+                + "WHERE d.fecha = (\n"
+                + "SELECT MAX(d2.fecha)\n"
+                + "FROM datos d2\n"
+                + "WHERE d.id_alumno = d2.id_alumno \n"
+                + ") AND id_grupo = ?) subdatos\n"
+                + "GROUP BY diagnostico;";
+
+        return Response.ok(SISVANUtils.generarJSONGraficoPastel(query, id_grupo, "grupo").toString()).build();
+    }
 
     /**
      * Obtener los puntajes Z de la masa proporcionados por la OMS

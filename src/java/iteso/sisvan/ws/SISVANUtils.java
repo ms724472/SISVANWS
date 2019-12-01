@@ -161,6 +161,67 @@ public class SISVANUtils {
         return response;
     }
 
+    public static JsonObject generarJSONGraficoPastel(String query, String idAlumno, String nombreSerieX) {
+        DataSource datasource;
+        JsonObjectBuilder jsonObjectBuilder
+                = Json.createObjectBuilder();
+        JsonObject response;
+        boolean hayInformacion = false;
+
+        //Encontrar la clase para poder realizar la conexión con RDS
+        try {
+            datasource = (DataSource) new InitialContext().lookup(DB_JNDI);
+        } catch (NamingException ex) {
+            jsonObjectBuilder.add("error", "Error al intentar obtener la conexión con la base de datos.");
+            jsonObjectBuilder.add("mensaje", ex.getMessage());
+            response = jsonObjectBuilder.build();
+            return response;
+        }
+
+        try (Connection dbConnection = datasource.getConnection();
+                PreparedStatement statement = dbConnection.prepareStatement(query)) {
+            statement.setString(1, idAlumno);
+
+            try (ResultSet result = statement.executeQuery()) {
+                JsonArrayBuilder constructorArregloJSON
+                        = Json.createArrayBuilder();
+                int contador = 0;
+
+                while (result.next()) {
+                    if (!hayInformacion) {
+                        hayInformacion = true;
+                    }
+                    int numColumnas = result.getMetaData().getColumnCount();
+                    JsonObjectBuilder alumno
+                            = Json.createObjectBuilder();
+
+                    alumno.add("id", contador++);
+                    alumno.add("serie", result.getString(2));
+                    alumno.add(nombreSerieX, result.getString(1));
+                    alumno.add("valor", result.getInt(3));
+                    constructorArregloJSON.add(alumno);
+
+                }
+
+                if (hayInformacion) {
+                    jsonObjectBuilder.add("datos", constructorArregloJSON);
+                } else {
+                    jsonObjectBuilder.add("error", "No hay datos.");
+                }
+
+                response = jsonObjectBuilder.build();
+            } catch (SQLException ex) {
+                throw ex;
+            }
+        } catch (SQLException ex) {
+            jsonObjectBuilder.add("error", "Error al intentar ejecutar la consulta en la base de datos.");
+            jsonObjectBuilder.add("mensaje", ex.getMessage());
+            response = jsonObjectBuilder.build();
+            return response;
+        }
+        return response;
+    }
+
     public static JsonObject generarJSONMultiTipoDatos(String query, String parameter, String raiz) {
         DataSource datasource;
         JsonObjectBuilder jsonObjectBuilder
