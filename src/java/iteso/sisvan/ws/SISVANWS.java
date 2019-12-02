@@ -230,7 +230,7 @@ public class SISVANWS {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/obtenerEscuelas")
     public Response obtenerEscuelas() {
-        String query = "SELECT id_escuela, nombre FROM escuelas";
+        String query = "SELECT id_escuela as value, nombre as label FROM escuelas";
 
         return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, "", "escuelas", false).toString()).build();
     }
