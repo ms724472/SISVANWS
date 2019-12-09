@@ -11,6 +11,7 @@ import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import javax.json.Json;
@@ -271,7 +272,7 @@ public class SISVANUtils {
                             } else {
                                 double numero = result.getDouble(indice) * 100;
                                 numero = Math.round(numero);
-                                alumno.add(nombreColumna, (numero / 100));
+                                alumno.add(nombreColumna, String.format("%.2f",(numero / 100)));
                             }
                         } else {
                             alumno.add(nombreColumna, "");

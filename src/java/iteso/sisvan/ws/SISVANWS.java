@@ -16,6 +16,8 @@ import javax.ws.rs.Path;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.sql.*;
+import java.util.Arrays;
+import java.util.List;
 import javax.json.JsonObjectBuilder;
 import javax.json.JsonReader;
 import javax.naming.InitialContext;
@@ -68,18 +70,60 @@ public class SISVANWS {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/alumnos/agregarMedicion")
     public Response agregarMedicion(String cuerpoPeticion) {
-
         String query = "INSERT INTO datos(id_alumno, " + "\n"
                 + "fecha," + "\n"
                 + "masa," + "\n"
-                + "estatura)" + "\n"
-                + "VALUES(?,?,?,?)";
+                + "estatura," + "\n"
+                + "perimetro_cuello," + "\n"
+                + "cintura, triceps," + "\n"
+                + "subescapula," + "\n"
+                + "pliegue_cuello)" + "\n"
+                + "VALUES(var_sustitucion)";
 
-        String[] nombresColumnas = {"id_alumno", "fecha", "masa", "estatura"};
+        String[] nombresColumnas = {"id_alumno", "fecha", "masa", "estatura", "perimetro_cuello", "cintura", "triceps", "subescapula", "pliegue_cuello"};
+
+        try (JsonReader bodyReader = Json.createReader(new StringReader(cuerpoPeticion))) {
+            JsonObject datosEntrada = bodyReader.readObject();
+            List<String> columnas = Arrays.asList(nombresColumnas);
+
+            if (!datosEntrada.containsKey("perimetro_cuello")) {
+                query = query.replace("perimetro_cuello,", "");
+                columnas.remove("perimetro_cuello");
+            }
+
+            if (!datosEntrada.containsKey("cintura")) {
+                query = query.replace("cintura,", "");
+                columnas.remove("cintura");
+            }
+
+            if (!datosEntrada.containsKey("triceps")) {
+                query = query.replace("triceps,", "");
+                columnas.remove("triceps");
+            }
+
+            if (!datosEntrada.containsKey("subescapula")) {
+                query = query.replace("subescapula,", "");
+                columnas.remove("subescapula");
+            }
+
+            if (!datosEntrada.containsKey("pliegue_cuello")) {
+                query = query.replace("pliegue_cuello", "");
+                columnas.remove("pliegue_cuello");
+            }
+
+            String varSustitucion = "?";
+            nombresColumnas = columnas.toArray(new String[columnas.size()]);
+
+            for (int indice = 1; indice < datosEntrada.keySet().size(); indice++) {
+                varSustitucion += ",?";
+            }
+
+            query = query.replace("var_sustitucion", varSustitucion);
+        }
 
         return Response.ok(SISVANUtils.insertarNuevoDatoEnBD(cuerpoPeticion, nombresColumnas, query).toString()).build();
     }
-    
+
     /**
      * Mostrar todos los alumnos con el nombre o apellido especificado
      *
@@ -211,7 +255,10 @@ public class SISVANWS {
                 + "sexo," + "\n"
                 + "fecha_nac," + "\n"
                 + "escuelas.nombre as escuela," + "\n"
-                + "grado," + "\n"
+                + "IF(timestampdiff(YEAR, alumnos.fecha_nac, " + "\n"
+                + "CONCAT(YEAR(CURRENT_DATE()), '-12-31')) > 13, " + "\n"
+                + "'EGRESADO', " + "\n"
+                + "timestampdiff(YEAR, DATE_ADD(alumnos.fecha_nac, INTERVAL 6 YEAR), CONCAT(YEAR(CURRENT_DATE()), '-12-31'))) as grado," + "\n"
                 + "letra" + "\n"
                 + "FROM alumnos, grupos, escuelas" + "\n"
                 + "WHERE id_alumno = ?" + "\n"
@@ -220,7 +267,7 @@ public class SISVANWS {
 
         return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, idAlumno, "datos", true).toString()).build();
     }
-    
+
     /**
      * Obtener toda la lista de escuelas
      *
@@ -234,7 +281,7 @@ public class SISVANWS {
 
         return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, "", "escuelas", false).toString()).build();
     }
-    
+
     /**
      * Obtener toda la lista de grupos por escuela
      *
@@ -245,9 +292,9 @@ public class SISVANWS {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/escuelas/obtenerGrupos/{idEscuela}")
     public Response obtenerGrupos(@PathParam("idEscuela") String idEscuela) {
-        String query = "SELECT id_grupo, concat(grado, ' ', letra) as grupo FROM grupos WHERE id_escuela = ?";
+        String query = "SELECT id_grupo as value, concat(grado, ' ', letra) as label FROM grupos WHERE id_escuela = ?";
 
-        return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, idEscuela, "escuelas", true).toString()).build();
+        return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, idEscuela, "grupos", true).toString()).build();
     }
 
     /**
@@ -302,7 +349,7 @@ public class SISVANWS {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/alumnos/obtenerMediciones/{idAlumno}")
     public Response obtenerMediciones(@PathParam("idAlumno") String idAlumno) {
-        String query = "SELECT fecha,masa,estatura,imc" + "\n"
+        String query = "SELECT * " + "\n"
                 + "FROM datos" + "\n"
                 + "WHERE id_alumno = ?";
 
