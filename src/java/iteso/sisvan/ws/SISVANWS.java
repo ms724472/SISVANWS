@@ -5,6 +5,8 @@
  */
 package iteso.sisvan.ws;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.StringReader;
 import java.math.BigInteger;
 import java.security.MessageDigest;
@@ -26,6 +28,9 @@ import javax.sql.DataSource;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PathParam;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response.ResponseBuilder;
+import javax.ws.rs.core.StreamingOutput;
 
 /**
  * REST Web Service
@@ -122,6 +127,22 @@ public class SISVANWS {
         }
 
         return Response.ok(SISVANUtils.insertarNuevoDatoEnBD(cuerpoPeticion, nombresColumnas, query).toString()).build();
+    }
+
+    @GET
+    @Produces("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    @Path("/alumnos/generarExcel/{id_alumno}")
+    public Response generarExcel(@PathParam("id_alumno") String id_alumno) throws IOException {
+        JsonObjectBuilder constructorJSON = Json.createObjectBuilder();
+        JsonObject datosAlumno = Json.createReader(new StringReader(obtenerDatos(id_alumno)
+                .getEntity().toString())).readObject();
+        JsonObject medicionesAlumno = Json.createReader(new StringReader(obtenerMediciones(id_alumno)
+                .getEntity().toString())).readObject();
+        constructorJSON.add("datos", datosAlumno.get("datos"));
+        constructorJSON.add("mediciones", medicionesAlumno.get("mediciones"));
+        ResponseBuilder response = Response.ok(SISVANUtils.generarExcelConJSON(constructorJSON.build()));
+        response.header("Content-Disposition", "attachment; Reporte.xlsx");
+        return response.build();
     }
 
     /**
