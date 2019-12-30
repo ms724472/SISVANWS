@@ -5,7 +5,6 @@
  */
 package iteso.sisvan.ws;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.StringReader;
 import java.math.BigInteger;
@@ -28,9 +27,7 @@ import javax.sql.DataSource;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PathParam;
-import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.ResponseBuilder;
-import javax.ws.rs.core.StreamingOutput;
 
 /**
  * REST Web Service
