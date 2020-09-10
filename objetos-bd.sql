@@ -36,4 +36,48 @@ CREATE TABLE datos(id_alumno INT NOT NULL,
                     triceps FLOAT,
                     subescapula FLOAT,
                     pliegue_cuello FLOAT,
-                    FOREIGN KEY (id_alumno) REFERENCES alumnos(id_alumno));                    
+                    FOREIGN KEY (id_alumno) REFERENCES alumnos(id_alumno)); 
+					
+CREATE TABLE percentiles_oms_imc(
+	id_percentil varchar(25) PRIMARY KEY NOT NULL,
+    normalizador float NOT NULL,
+    mediana float NOT NULL,
+    coeficiente_variacion float NOT NULL
+); 					
+					
+DELIMITER $$
+DROP function IF EXISTS `diagnosticar_imc`;
+CREATE FUNCTION `diagnosticar_imc` (
+	sexo varchar(25),
+	meses int,
+    imc float
+)
+RETURNS VARCHAR(25)
+DETERMINISTIC
+BEGIN
+	DECLARE valor_normalizador float;
+    DECLARE valor_mediana float;
+    DECLARE valor_coeficiente float;
+    DECLARE resultado_lms float;
+    DECLARE diagnostico varchar(25);
+
+	SELECT normalizador, mediana, coeficiente_variacion
+    INTO valor_normalizador, valor_mediana, valor_coeficiente
+	FROM percentiles_oms_imc
+    WHERE id_percentil = concat(sexo, meses);
+    
+    SET resultado_lms = (power((imc/valor_mediana), valor_normalizador) - 1) / (valor_normalizador * valor_coeficiente);
+
+	IF resultado_lms < -2.0 THEN
+		SET diagnostico = 'Bajo peso';
+	ELSEIF resultado_lms <= 1.0 THEN
+		SET diagnostico = "Sin exceso de peso";
+	ELSEIF resultado_lms > 1.0 AND resultado_lms <= 2.0 THEN
+		SET diagnostico = "Sobrepeso";
+	ELSEIF resultado_lms > 2.0 THEN
+		SET diagnostico = "Obesidad";
+	END IF;
+
+RETURN diagnostico;
+END$$
+DELIMITER ;   					
