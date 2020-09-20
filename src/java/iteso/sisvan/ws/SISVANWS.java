@@ -5,7 +5,11 @@
  */
 package iteso.sisvan.ws;
 
+import static iteso.sisvan.ws.SISVANUtils.DB_JNDI;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.StringReader;
 import java.math.BigInteger;
 import java.security.MessageDigest;
@@ -21,13 +25,24 @@ import java.util.Arrays;
 import java.util.List;
 import javax.json.JsonObjectBuilder;
 import javax.json.JsonReader;
+import javax.json.JsonValue;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.sql.DataSource;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PathParam;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.Response.ResponseBuilder;
+import org.apache.batik.transcoder.TranscoderInput;
+import org.apache.batik.transcoder.TranscoderOutput;
+import org.apache.batik.transcoder.image.PNGTranscoder;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 
 /**
  * REST Web Service
@@ -55,11 +70,11 @@ public class SISVANWS {
                 + "sexo," + "\n"
                 + "fecha_nac," + "\n"
                 + "id_grupo)" + "\n"
-                + "VALUES(?,?,?,?,?,?,8)";
+                + "VALUES(?,?,?,?,?,?,1)";
 
         String[] nombresColumnas = {"id_alumno", "nombre", "apellido_p", "apellido_m", "sexo", "fecha_nac"};
 
-        return Response.ok(SISVANUtils.insertarNuevoDatoEnBD(cuerpoPeticion, nombresColumnas, query).toString()).build();
+        return Response.ok(SISVANUtils.insertarNuevoDatoEnBD(cuerpoPeticion, nombresColumnas, query).toString()).header("Access-Control-Allow-Origin", "*").build();
     }
 
     /**
@@ -81,13 +96,18 @@ public class SISVANWS {
                 + "subescapula," + "\n"
                 + "pliegue_cuello)" + "\n"
                 + "VALUES(var_sustitucion)";
+        String fecha;
+        String id_alumno;
 
         String[] nombresColumnas = {"id_alumno", "fecha", "masa", "estatura", "perimetro_cuello", "cintura", "triceps", "subescapula", "pliegue_cuello"};
 
         try (JsonReader bodyReader = Json.createReader(new StringReader(cuerpoPeticion))) {
             JsonObject datosEntrada = bodyReader.readObject();
             List<String> columnas = Arrays.asList(nombresColumnas);
-
+            
+            fecha = datosEntrada.getString("fecha");
+            id_alumno = datosEntrada.getString("id_alumno"); 
+            
             if (!datosEntrada.containsKey("perimetro_cuello")) {
                 query = query.replace("perimetro_cuello,", "");
                 columnas.remove("perimetro_cuello");
@@ -122,8 +142,45 @@ public class SISVANWS {
 
             query = query.replace("var_sustitucion", varSustitucion);
         }
+        
+        JsonObject respuestaInserccion = SISVANUtils.insertarNuevoDatoEnBD(cuerpoPeticion, nombresColumnas, query);
+        
+        if(respuestaInserccion.getString("status").equals("exito")) {
+            String actualizacionPuntajes = "SELECT actualizar_puntajes(?, ?)";
+            DataSource datasource;
+            JsonObjectBuilder jsonObjectBuilder
+                = Json.createObjectBuilder();
+            
+            try {
+                datasource = (DataSource) new InitialContext().lookup(DB_JNDI);
+            } catch (NamingException ex) {
+                jsonObjectBuilder.add("error", "Error al intentar obtener la conexión con la base de datos.");
+                jsonObjectBuilder.add("mensaje", ex.getMessage());
+                respuestaInserccion = jsonObjectBuilder.build();
+                return Response.ok(respuestaInserccion.toString()).header("Access-Control-Allow-Origin", "*").build();
+            }
 
-        return Response.ok(SISVANUtils.insertarNuevoDatoEnBD(cuerpoPeticion, nombresColumnas, query).toString()).build();
+            //Inicializando la conexión a la base de datos
+            try (Connection dbConnection = datasource.getConnection();
+                    PreparedStatement statement = dbConnection.prepareStatement(actualizacionPuntajes)) {
+                statement.setString(1, id_alumno);
+                statement.setString(2, fecha);
+                
+                try(ResultSet resultado = statement.executeQuery()) {
+                    if(!resultado.next()) {
+                        respuestaInserccion.remove("status");
+                        respuestaInserccion.put("status", JsonValue.FALSE);
+                    }
+                }
+            } catch (SQLException exception) {
+                jsonObjectBuilder.add("error", "Error al actualizar los puntajes z.");
+                jsonObjectBuilder.add("mensaje", exception.getMessage());
+                respuestaInserccion = jsonObjectBuilder.build();
+                return Response.ok(respuestaInserccion.toString()).header("Access-Control-Allow-Origin", "*").build();
+            }
+        }
+
+        return Response.ok(respuestaInserccion.toString()).header("Access-Control-Allow-Origin", "*").build();
     }
 
     @GET
@@ -139,6 +196,7 @@ public class SISVANWS {
         constructorJSON.add("mediciones", medicionesAlumno.get("mediciones"));
         ResponseBuilder response = Response.ok(SISVANUtils.generarExcelConJSON(constructorJSON.build()));
         response.header("Content-Disposition", "attachment; Reporte.xlsx");
+        response.header("Access-Control-Allow-Origin", "*");
         return response.build();
     }
 
@@ -158,7 +216,7 @@ public class SISVANWS {
                 + "INNER JOIN escuelas ON grupos.id_escuela = escuelas.id_escuela\n"
                 + "WHERE alumnos.nombre like '%" + nombre + "%' OR apellido_p like '%" + nombre + "%' OR apellido_m like '%" + nombre + "%';";
 
-        return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, nombre, "alumnos", false).toString()).build();
+        return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, nombre, "alumnos", false).toString()).header("Access-Control-Allow-Origin", "*").build();
     }
 
     /**
@@ -194,7 +252,7 @@ public class SISVANWS {
                 jsonObjectBuilder.add("error", "Favor de proporcionar todos los datos.");
                 jsonObjectBuilder.add("mensaje", ex.getMessage());
                 response = jsonObjectBuilder.build();
-                return Response.ok(response.toString()).build();
+                return Response.ok(response.toString()).header("Access-Control-Allow-Origin", "*").build();
             }
             //Procesando la conversion de la contraseña
             try {
@@ -212,7 +270,7 @@ public class SISVANWS {
                 jsonObjectBuilder.add("error", "Error al intentar convertir la contraseña.");
                 jsonObjectBuilder.add("mensaje", ex.getMessage());
                 response = jsonObjectBuilder.build();
-                return Response.ok(response.toString()).build();
+                return Response.ok(response.toString()).header("Access-Control-Allow-Origin", "*").build();
             }
 
             //Encontrar la clase para poder realizar la conexión con RDS
@@ -222,7 +280,7 @@ public class SISVANWS {
                 jsonObjectBuilder.add("error", "Error al intentar obtener la conexión con la base de datos.");
                 jsonObjectBuilder.add("mensaje", ex.getMessage());
                 response = jsonObjectBuilder.build();
-                return Response.ok(response.toString()).build();
+                return Response.ok(response.toString()).header("Access-Control-Allow-Origin", "*").build();
             }
 
             //Obteniendo la información de la base de datos
@@ -254,7 +312,7 @@ public class SISVANWS {
             response = jsonObjectBuilder.build();
         }
 
-        return Response.ok(response.toString()).build();
+        return Response.ok(response.toString()).header("Access-Control-Allow-Origin", "*").build();
     }
 
     /**
@@ -283,7 +341,7 @@ public class SISVANWS {
                 + "AND grupos.id_grupo = alumnos.id_grupo" + "\n"
                 + "AND grupos.id_escuela = escuelas.id_escuela";
 
-        return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, idAlumno, "datos", true).toString()).build();
+        return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, idAlumno, "datos", true).toString()).header("Access-Control-Allow-Origin", "*").build();
     }
 
     /**
@@ -297,7 +355,7 @@ public class SISVANWS {
     public Response obtenerEscuelas() {
         String query = "SELECT id_escuela as value, nombre as label FROM escuelas";
 
-        return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, "", "escuelas", false).toString()).build();
+        return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, "", "escuelas", false).toString()).header("Access-Control-Allow-Origin", "*").build();
     }
 
     /**
@@ -312,7 +370,7 @@ public class SISVANWS {
     public Response obtenerGrupos(@PathParam("idEscuela") String idEscuela) {
         String query = "SELECT id_grupo as value, concat(grado, ' ', letra) as label FROM grupos WHERE id_escuela = ?";
 
-        return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, idEscuela, "grupos", true).toString()).build();
+        return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, idEscuela, "grupos", true).toString()).header("Access-Control-Allow-Origin", "*").build();
     }
 
     /**
@@ -333,7 +391,7 @@ public class SISVANWS {
                 + "INNER JOIN oms_puntajes_z_estatura ON id_percentil = concat(alumnos.sexo,timestampdiff(MONTH, alumnos.fecha_nac, datos.fecha))" + "\n"
                 + "WHERE datos.id_alumno = ?";
 
-        return Response.ok(SISVANUtils.generarJSONGraficoLinea(query, idAlumno, "fecha", true).toString()).build();
+        return Response.ok(SISVANUtils.generarJSONGraficoLinea(query, idAlumno, "fecha", true).toString()).header("Access-Control-Allow-Origin", "*").build();
     }
 
     /**
@@ -354,7 +412,7 @@ public class SISVANWS {
                 + "INNER JOIN oms_puntajes_z_masa ON id_percentil = concat(alumnos.sexo,timestampdiff(MONTH, alumnos.fecha_nac, datos.fecha))" + "\n"
                 + "WHERE datos.id_alumno = ?";
 
-        return Response.ok(SISVANUtils.generarJSONGraficoLinea(query, idAlumno, "fecha", true).toString()).build();
+        return Response.ok(SISVANUtils.generarJSONGraficoLinea(query, idAlumno, "fecha", true).toString()).header("Access-Control-Allow-Origin", "*").build();
     }
 
     /**
@@ -371,7 +429,7 @@ public class SISVANWS {
                 + "FROM datos" + "\n"
                 + "WHERE id_alumno = ?";
 
-        return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, idAlumno, "mediciones", true).toString()).build();
+        return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, idAlumno, "mediciones", true).toString()).header("Access-Control-Allow-Origin", "*").build();
     }
 
     /**
@@ -394,7 +452,7 @@ public class SISVANWS {
                 + ") AND id_grupo IN (SELECT id_grupo FROM grupos WHERE id_escuela = ?)) subdatos\n"
                 + "GROUP BY diagnostico;";
 
-        return Response.ok(SISVANUtils.generarJSONGraficoPastel(query, id_escuela, "escuela").toString()).build();
+        return Response.ok(SISVANUtils.generarJSONGraficoPastel(query, id_escuela, "escuela").toString()).header("Access-Control-Allow-Origin", "*").build();
     }
 
     /**
@@ -417,7 +475,7 @@ public class SISVANWS {
                 + ") AND id_grupo = ?) subdatos\n"
                 + "GROUP BY diagnostico;";
 
-        return Response.ok(SISVANUtils.generarJSONGraficoPastel(query, id_grupo, "grupo").toString()).build();
+        return Response.ok(SISVANUtils.generarJSONGraficoPastel(query, id_grupo, "grupo").toString()).header("Access-Control-Allow-Origin", "*").build();
     }
 
     /**
@@ -441,6 +499,89 @@ public class SISVANWS {
                 + "oms_puntajes_z_masa WHERE id_percentil LIKE('%" + sexo + "%') \n"
                 + "ORDER BY mes";
 
-        return Response.ok(SISVANUtils.generarJSONGraficoLinea(query, sexo, "mes", false).toString()).build();
+        return Response.ok(SISVANUtils.generarJSONGraficoLinea(query, sexo, "mes", false).toString()).header("Access-Control-Allow-Origin", "*").build();
+    }
+
+    @GET
+    @Produces(MediaType.TEXT_PLAIN)
+    @Path("/obtenerAnfitrion")
+    public Response obtenerAnfitrion(@Context HttpHeaders httpheaders) {
+        String hostRequest = httpheaders.getHeaderString("User-Agent") == null ? "unknown"
+                : httpheaders.getHeaderString("User-Agent");
+        ResponseBuilder responseBuilder = Response.ok("Host: " + hostRequest);
+        responseBuilder.header("Access-Control-Allow-Origin", "*");
+        return responseBuilder.build();
+    }
+
+    @POST
+    @Produces("application/pdf")
+    @Path("/generarPDF")
+    public Response generarPDF(String contenido) {
+        JsonObject peticionJSON = Json.createReader(new StringReader(contenido)).readObject();
+        String svg = peticionJSON.getString("svg");
+        String tipo = peticionJSON.getString("tipo");
+        int ancho = peticionJSON.getInt("ancho");
+        int alto = peticionJSON.getInt("alto");
+        ByteArrayOutputStream streamPDF = new ByteArrayOutputStream();
+        svg = svg.replace("<svg width=\"100%\" height=\"100%\" style=\"position: absolute; left: 0px; top: 0px; padding: inherit;\">", "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" + ancho + "px\" height=\"" + alto + "px\">");
+        svg = svg.replace("-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Arial,sans-serif", "Arial");
+        svg = svg.replaceFirst("rgba\\([0, ]+\\)", "white");
+        while (svg.indexOf("rgba") > 0) {
+            String aux = svg.substring(svg.indexOf("rgba"));
+            aux = aux.substring(0, aux.indexOf(")") + 1);
+            String[] componentes = aux.replace("rgba(", "").replace(")", "").replace(" ", "").split(",");
+            String newFormat = "rgb(" + componentes[0] + ", " + componentes[1] + ", " + componentes[2] + ")\" fill-opacity=\"" + componentes[3];
+            svg = svg.replace(aux, newFormat);
+        }
+        InputStream svgStream = new ByteArrayInputStream(svg.getBytes());
+        TranscoderInput imagenSVG = new TranscoderInput(svgStream);
+        try (ByteArrayOutputStream streamPNG = new ByteArrayOutputStream()) {
+            TranscoderOutput imagenPNG = new TranscoderOutput(streamPNG);
+            PNGTranscoder convertidor = new PNGTranscoder();
+            convertidor.transcode(imagenSVG, imagenPNG);
+            streamPNG.flush();
+            streamPNG.close();
+            try (PDDocument documento = new PDDocument()) {
+                PDPage pagina = new PDPage();
+                documento.addPage(pagina);
+                try (PDPageContentStream streamContenido = new PDPageContentStream(documento, pagina)) {
+                    PDImageXObject grafica = PDImageXObject.createFromByteArray(documento, streamPNG.toByteArray(), "grafica");
+                    streamContenido.setFont(PDType1Font.HELVETICA_BOLD, 18);
+                    streamContenido.beginText();
+                    streamContenido.newLineAtOffset(160, 670);
+                    streamContenido.showText("Reporte de evaluación por " + tipo);
+                    streamContenido.endText();
+                    streamContenido.drawImage(grafica, 50, 250);
+                    streamContenido.close();
+                    documento.save(streamPDF);
+                } catch (IOException ex) {
+                    return Response.ok("No es posible generar el PDF: " + ex.getMessage()).build();
+                }
+            } catch (IOException ex) {
+                return Response.ok("No es posible generar el PDF: " + ex.getMessage()).build();
+            }
+        } catch (Exception ex) {
+            return Response.ok("No es posible generar la imagen: " + ex.getMessage()).build();
+        }
+        
+        return Response.ok(streamPDF.toByteArray()).header("Access-Control-Allow-Origin", "*").build();
+    }
+    
+    public static void main(String... args) {
+        String contrasenia = "welcome1";
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-512");
+            byte[] messageDigest = digest.digest(contrasenia.getBytes());
+            BigInteger bInteger = new BigInteger(1, messageDigest);
+            String textoDisp = bInteger.toString(16);
+
+            while (textoDisp.length() < 32) {
+                textoDisp = "0" + textoDisp;
+            }
+
+            System.out.println(textoDisp);
+        } catch (NoSuchAlgorithmException ex) {
+            ex.printStackTrace();
+        }
     }
 }

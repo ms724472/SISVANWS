@@ -20,7 +20,6 @@ import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 import javax.json.JsonReader;
-import javax.json.JsonValue;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.sql.DataSource;
@@ -47,7 +46,7 @@ public class SISVANUtils {
         HashMap<String, String> columnasConValores = new HashMap<>();
         JsonObject response;
         DataSource datasource;
-        boolean sqlResult;
+        int filasInsertadas;
         JsonObjectBuilder jsonObjectBuilder
                 = Json.createObjectBuilder();
 
@@ -87,8 +86,8 @@ public class SISVANUtils {
                     statement.setString(indiceColumna++, columnasConValores.get(nombreColumna));
                 }
 
-                sqlResult = statement.execute();
-                jsonObjectBuilder.add("status", sqlResult ? "exito" : "fallo");
+                filasInsertadas = statement.executeUpdate();
+                jsonObjectBuilder.add("status", filasInsertadas > 0 ? "exito" : "fallo");
                 response = jsonObjectBuilder.build();
             } catch (SQLException ex) {
                 jsonObjectBuilder.add("error", "Error al intentar ejecutar la consulta en la base de datos.");
