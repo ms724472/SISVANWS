@@ -384,11 +384,11 @@ public class SISVANWS {
     @Path("/alumnos/obtenerHistoricoEstatura/{idAlumno}")
     public Response obtenerHistoricoEstatura(@PathParam("idAlumno") String idAlumno) {
         String query = "SELECT date_format(fecha, '%d/%m/%Y') as fecha, "
-                + "estatura*100 as estatura, "
-                + "nivel_0 as ideal "
+                + "estatura as estatura, "
+                + "mediana as ideal "
                 + "FROM datos" + "\n"
                 + "INNER JOIN alumnos ON alumnos.id_alumno = datos.id_alumno" + "\n"
-                + "INNER JOIN oms_puntajes_z_estatura ON id_percentil = concat(alumnos.sexo,timestampdiff(MONTH, alumnos.fecha_nac, datos.fecha))" + "\n"
+                + "INNER JOIN percentiles_oms_talla ON id_percentil = concat(alumnos.sexo,timestampdiff(MONTH, alumnos.fecha_nac, datos.fecha))" + "\n"
                 + "WHERE datos.id_alumno = ?";
 
         return Response.ok(SISVANUtils.generarJSONGraficoLinea(query, idAlumno, "fecha", true).toString()).header("Access-Control-Allow-Origin", "*").build();
@@ -406,10 +406,10 @@ public class SISVANWS {
     public Response obtenerHistoricoMasa(@PathParam("idAlumno") String idAlumno) {
         String query = "SELECT date_format(fecha, '%d/%m/%Y') as fecha, "
                 + "masa, "
-                + "nivel_0 as ideal "
+                + "mediana as ideal "
                 + "FROM datos" + "\n"
                 + "INNER JOIN alumnos ON alumnos.id_alumno = datos.id_alumno" + "\n"
-                + "INNER JOIN oms_puntajes_z_masa ON id_percentil = concat(alumnos.sexo,timestampdiff(MONTH, alumnos.fecha_nac, datos.fecha))" + "\n"
+                + "INNER JOIN percentiles_oms_peso ON id_percentil = concat(alumnos.sexo,timestampdiff(MONTH, alumnos.fecha_nac, datos.fecha))" + "\n"
                 + "WHERE datos.id_alumno = ?";
 
         return Response.ok(SISVANUtils.generarJSONGraficoLinea(query, idAlumno, "fecha", true).toString()).header("Access-Control-Allow-Origin", "*").build();
