@@ -122,7 +122,7 @@ public class SISVANWS {
                 query = query.replace("triceps,", "");
                 columnas.remove("triceps");
             }
-
+            
             if (!datosEntrada.containsKey("subescapula")) {
                 query = query.replace("subescapula,", "");
                 columnas.remove("subescapula");
@@ -145,7 +145,7 @@ public class SISVANWS {
         
         JsonObject respuestaInserccion = SISVANUtils.insertarNuevoDatoEnBD(cuerpoPeticion, nombresColumnas, query);
         
-        if(respuestaInserccion.getString("status").equals("exito")) {
+        if(respuestaInserccion.containsKey("status") && respuestaInserccion.getString("status").equals("exito")) {
             String actualizacionPuntajes = "SELECT actualizar_puntajes(?, ?)";
             DataSource datasource;
             JsonObjectBuilder jsonObjectBuilder
@@ -442,8 +442,8 @@ public class SISVANWS {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/escolares/obtenerPorcentajesEscuela/{id_escuela}")
     public Response obtenerPorcentajesEscuela(@PathParam("id_escuela") String id_escuela) {
-        String query = "SELECT concat('Escuela ', id_grupo) as grupo, diagnosticar_alumnos(concat(subdatos.sexo, meses), masa) as diagnostico, COUNT(*) as value \n"
-                + "FROM (SELECT alumnos.id_grupo, alumnos.id_alumno, ROUND(masa) as masa, timestampdiff(MONTH, alumnos.fecha_nac, d.fecha) as meses, sexo FROM datos d INNER JOIN alumnos\n"
+        String query = "SELECT concat('Escuela ', id_grupo) as grupo, diagnostico, COUNT(*) as value \n"
+                + "FROM (SELECT alumnos.id_grupo, alumnos.id_alumno, ROUND(masa) as masa, timestampdiff(MONTH, alumnos.fecha_nac, d.fecha) as meses, sexo, d.diagnostico_imc as diagnostico FROM datos d INNER JOIN alumnos\n"
                 + "ON alumnos.id_alumno = d.id_alumno\n"
                 + "WHERE d.fecha = (\n"
                 + "SELECT MAX(d2.fecha)\n"
@@ -465,8 +465,8 @@ public class SISVANWS {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/escolares/obtenerPorcentajesGrupo/{id_grupo}")
     public Response obtenerPorcentajesGrupo(@PathParam("id_grupo") String id_grupo) {
-        String query = "SELECT concat('Grupo ', id_grupo) as grupo, diagnosticar_alumnos(concat(subdatos.sexo, meses), masa) as diagnostico, COUNT(*) as value \n"
-                + "FROM (SELECT alumnos.id_grupo, alumnos.id_alumno, ROUND(masa) as masa, timestampdiff(MONTH, alumnos.fecha_nac, d.fecha) as meses, sexo FROM datos d INNER JOIN alumnos\n"
+        String query = "SELECT concat('Grupo ', id_grupo) as grupo, diagnostico, COUNT(*) as value \n"
+                + "FROM (SELECT alumnos.id_grupo, alumnos.id_alumno, ROUND(masa) as masa, timestampdiff(MONTH, alumnos.fecha_nac, d.fecha) as meses, sexo, d.diagnostico_imc as diagnostico FROM datos d INNER JOIN alumnos\n"
                 + "ON alumnos.id_alumno = d.id_alumno\n"
                 + "WHERE d.fecha = (\n"
                 + "SELECT MAX(d2.fecha)\n"
@@ -565,23 +565,5 @@ public class SISVANWS {
         }
         
         return Response.ok(streamPDF.toByteArray()).header("Access-Control-Allow-Origin", "*").build();
-    }
-    
-    public static void main(String... args) {
-        String contrasenia = "welcome1";
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-512");
-            byte[] messageDigest = digest.digest(contrasenia.getBytes());
-            BigInteger bInteger = new BigInteger(1, messageDigest);
-            String textoDisp = bInteger.toString(16);
-
-            while (textoDisp.length() < 32) {
-                textoDisp = "0" + textoDisp;
-            }
-
-            System.out.println(textoDisp);
-        } catch (NoSuchAlgorithmException ex) {
-            ex.printStackTrace();
-        }
-    }
+    }       
 }

@@ -58,7 +58,8 @@ public class SISVANUtils {
                     if (!datosEntrada.containsKey(nombreColumna)) {
                         throw new Exception("Datos incompletos.");
                     }
-                    columnasConValores.put(nombreColumna, datosEntrada.getString(nombreColumna));
+                    
+                    columnasConValores.put(nombreColumna, datosEntrada.getString(nombreColumna, ""));                    
                 }
             } catch (Exception ex) {
                 jsonObjectBuilder.add("error", "Favor de proporcionar todos los datos.");
@@ -83,7 +84,12 @@ public class SISVANUtils {
 
                 int indiceColumna = 1;
                 for (String nombreColumna : nombresColumnas) {
-                    statement.setString(indiceColumna++, columnasConValores.get(nombreColumna));
+                    String valor = columnasConValores.get(nombreColumna);
+                    if(valor.equals("")) {
+                        statement.setNull(indiceColumna++, java.sql.Types.DECIMAL);
+                    } else {
+                        statement.setString(indiceColumna++, valor);
+                    }                    
                 }
 
                 filasInsertadas = statement.executeUpdate();
