@@ -11,6 +11,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -23,6 +24,7 @@ import javax.ws.rs.core.Response;
 import java.sql.*;
 import java.util.Arrays;
 import java.util.List;
+import javax.json.JsonArrayBuilder;
 import javax.json.JsonObjectBuilder;
 import javax.json.JsonReader;
 import javax.json.JsonValue;
@@ -70,9 +72,9 @@ public class SISVANWS {
                 + "sexo," + "\n"
                 + "fecha_nac," + "\n"
                 + "id_grupo)" + "\n"
-                + "VALUES(?,?,?,?,?,?,1)";
+                + "VALUES(?,?,?,?,?,?,?)";
 
-        String[] nombresColumnas = {"id_alumno", "nombre", "apellido_p", "apellido_m", "sexo", "fecha_nac"};
+        String[] nombresColumnas = {"id_alumno", "nombre", "apellido_p", "apellido_m", "sexo", "fecha_nac", "id_grupo"};
 
         return Response.ok(SISVANUtils.insertarNuevoDatoEnBD(cuerpoPeticion, nombresColumnas, query).toString()).header("Access-Control-Allow-Origin", "*").build();
     }
@@ -331,10 +333,8 @@ public class SISVANWS {
                 + "sexo," + "\n"
                 + "fecha_nac," + "\n"
                 + "escuelas.nombre as escuela," + "\n"
-                + "IF(timestampdiff(YEAR, alumnos.fecha_nac, " + "\n"
-                + "CONCAT(YEAR(CURRENT_DATE()), '-12-31')) > 13, " + "\n"
-                + "'EGRESADO', " + "\n"
-                + "timestampdiff(YEAR, DATE_ADD(alumnos.fecha_nac, INTERVAL 6 YEAR), CONCAT(YEAR(CURRENT_DATE()), '-12-31'))) as grado," + "\n"
+                + "escuelas.id_escuela," + "\n"
+                + "IF ((YEAR(CURDATE()) - anio_ingreso) > 6, 'EGRESADO', (YEAR(CURDATE()) - anio_ingreso)) as grado," + "\n"
                 + "letra" + "\n"
                 + "FROM alumnos, grupos, escuelas" + "\n"
                 + "WHERE id_alumno = ?" + "\n"
@@ -357,6 +357,35 @@ public class SISVANWS {
 
         return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, "", "escuelas", false).toString()).header("Access-Control-Allow-Origin", "*").build();
     }
+    
+    /**
+     * Obtener toda la lista de escuelas
+     *
+     * @return json con toda la informacion de la base de datos
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/obtenerDatosEscuelas")
+    public Response obtenerDatosEscuelas() {
+        String query = "SELECT * FROM escuelas";
+
+        return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, "", "escuelas", false).toString()).header("Access-Control-Allow-Origin", "*").build();
+    }
+    
+    /**
+     * Obtener toda la lista de grupos con sus datos
+     * 
+     * @param idGrupo identificador unico del grupo
+     * @return json con toda la informacion de la base de datos
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/obtenerDatosGrupos/{idGrupo}")
+    public Response obtenerDatosGrupos(@PathParam("idGrupo") String idGrupo) {
+        String query = "SELECT id_grupo, letra, anio_ingreso, anio_graduacion, IF ((YEAR(CURDATE()) - anio_ingreso) > 6, 'EGRESADO', (YEAR(CURDATE()) - anio_ingreso)) as grado FROM grupos WHERE id_escuela = ? GROUP BY concat(anio_ingreso, letra)";
+
+        return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, idGrupo, "grupos", true).toString()).header("Access-Control-Allow-Origin", "*").build();
+    }
 
     /**
      * Obtener toda la lista de grupos por escuela
@@ -368,9 +397,74 @@ public class SISVANWS {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/escuelas/obtenerGrupos/{idEscuela}")
     public Response obtenerGrupos(@PathParam("idEscuela") String idEscuela) {
-        String query = "SELECT id_grupo as value, concat(grado, ' ', letra) as label FROM grupos WHERE id_escuela = ?";
+        String query = "SELECT id_grupo as value, IF ((YEAR(CURDATE()) - anio_ingreso) > 6, 'EGRESADO', concat((YEAR(CURDATE()) - anio_ingreso),' ', letra)) as label FROM grupos WHERE id_escuela = ?";
 
         return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, idEscuela, "grupos", true).toString()).header("Access-Control-Allow-Origin", "*").build();
+    }
+    
+    /**
+     * Obtener toda la lista de grupos
+     *
+     * @return json con todos los grupos del sistema.
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/grupos/obtenerTodosLosGrupos")
+    public Response obtenerTodosLosGrupos() { 
+        JsonObjectBuilder jsonObjectBuilder
+                = Json.createObjectBuilder();
+        JsonObject response;
+        DataSource datasource;
+        String query = "SELECT id_escuela, id_grupo as value, concat(concat((YEAR(CURDATE()) - anio_ingreso), ' '), letra) as label " + "\n"
+                       + "FROM grupos " + "\n"
+                       + "WHERE (YEAR(CURDATE()) - anio_ingreso) <= 6";
+        
+        //Encontrar la clase para poder realizar la conexión con RDS
+            try {
+                datasource = (DataSource) new InitialContext().lookup(SISVANUtils.DB_JNDI);
+            } catch (NamingException ex) {
+                jsonObjectBuilder.add("error", "Error al intentar obtener la conexión con la base de datos.");
+                jsonObjectBuilder.add("mensaje", ex.getMessage());
+                response = jsonObjectBuilder.build();
+                return Response.ok(response.toString()).header("Access-Control-Allow-Origin", "*").build();
+            }
+
+            //Obteniendo la información de la base de datos
+            try (Connection dbConnection = datasource.getConnection();
+                    PreparedStatement statement = dbConnection.prepareStatement(query);
+                    ResultSet resultados = statement.executeQuery()) {
+                String idEscuela = null;
+                JsonArrayBuilder gruposPorEscuela
+                    = Json.createArrayBuilder();
+                while(resultados.next()) {
+                    if(idEscuela == null || !idEscuela.equals(String.valueOf(resultados.getInt(1)))) {
+                        if(idEscuela != null) {
+                            jsonObjectBuilder.add(idEscuela, gruposPorEscuela);
+                            gruposPorEscuela = Json.createArrayBuilder();
+                        }
+                        idEscuela = String.valueOf(resultados.getInt(1));
+                    } 
+                    
+                    gruposPorEscuela.add(
+                            Json.createObjectBuilder()
+                                    .add("value", resultados.getInt(2))
+                                    .add("label", resultados.getString(3)));
+                }
+                jsonObjectBuilder.add(idEscuela, gruposPorEscuela);
+                response = jsonObjectBuilder.build();
+            } catch(SQLException exception) {
+                jsonObjectBuilder.add("error", "Error al intentar obtener informacion de la base de datos.");
+                response = jsonObjectBuilder.build();
+            }
+        
+        return Response.ok(response.toString()).build();               
+    }    
+    
+    public static void main(String... args) {
+        String test = null;
+        if(test.equals("false")) {
+            System.out.println("hola");
+        }
     }
 
     /**
@@ -384,7 +478,7 @@ public class SISVANWS {
     @Path("/alumnos/obtenerHistoricoEstatura/{idAlumno}")
     public Response obtenerHistoricoEstatura(@PathParam("idAlumno") String idAlumno) {
         String query = "SELECT date_format(fecha, '%d/%m/%Y') as fecha, "
-                + "estatura as estatura, "
+                + "estatura as talla, "
                 + "mediana as ideal "
                 + "FROM datos" + "\n"
                 + "INNER JOIN alumnos ON alumnos.id_alumno = datos.id_alumno" + "\n"
@@ -405,7 +499,7 @@ public class SISVANWS {
     @Path("/alumnos/obtenerHistoricoMasa/{idAlumno}")
     public Response obtenerHistoricoMasa(@PathParam("idAlumno") String idAlumno) {
         String query = "SELECT date_format(fecha, '%d/%m/%Y') as fecha, "
-                + "masa, "
+                + "masa as peso, "
                 + "mediana as ideal "
                 + "FROM datos" + "\n"
                 + "INNER JOIN alumnos ON alumnos.id_alumno = datos.id_alumno" + "\n"
@@ -425,9 +519,9 @@ public class SISVANWS {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/alumnos/obtenerMediciones/{idAlumno}")
     public Response obtenerMediciones(@PathParam("idAlumno") String idAlumno) {
-        String query = "SELECT * " + "\n"
-                + "FROM datos" + "\n"
-                + "WHERE id_alumno = ?";
+        String query = "SELECT datos.*, timestampdiff(MONTH, alumnos.fecha_nac, datos.fecha) as meses " + "\n"
+                + "FROM datos JOIN alumnos ON datos.id_alumno = alumnos.id_alumno" + "\n"
+                + "WHERE alumnos.id_alumno = ?";
 
         return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, idAlumno, "mediciones", true).toString()).header("Access-Control-Allow-Origin", "*").build();
     }

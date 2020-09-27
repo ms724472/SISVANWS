@@ -456,9 +456,8 @@ public class SISVANUtils {
                             } else if (valor instanceof Integer) {
                                 alumno.add(nombreColumna, result.getInt(indice));
                             } else {
-                                double numero = result.getDouble(indice) * 100;
-                                numero = Math.round(numero);
-                                alumno.add(nombreColumna, String.format("%.2f", (numero / 100)));
+                                double numero = result.getDouble(indice);
+                                alumno.add(nombreColumna, numero);
                             }
                         } else {
                             alumno.add(nombreColumna, "");
