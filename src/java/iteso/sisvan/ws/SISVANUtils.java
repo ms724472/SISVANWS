@@ -20,6 +20,7 @@ import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 import javax.json.JsonReader;
+import static javax.json.JsonValue.ValueType.NUMBER;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.sql.DataSource;
@@ -29,8 +30,12 @@ import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.IgnoredErrorType;
 import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.usermodel.XSSFClientAnchor;
+import org.apache.poi.xssf.usermodel.XSSFDrawing;
 import org.apache.poi.xssf.usermodel.XSSFFont;
+import org.apache.poi.xssf.usermodel.XSSFPicture;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
@@ -108,8 +113,29 @@ public class SISVANUtils {
 
         return response;
     }
+    
+    public static String prepararSVG(String svg, int ancho, int alto) {
+        svg = svg.replace("<svg width=\"100%\" height=\"100%\" style=\"position: absolute; left: 0px; top: 0px; padding: inherit;\">", "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" + ancho + "px\" height=\"" + alto + "px\">");
+        svg = svg.replace("<svg width=\"100%\" height=\"100%\" style=\"position:absolute;left:0px;top:0px;padding:inherit;\">", "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" + ancho + "px\" height=\"" + alto + "px\">");
+        svg = svg.replace("-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Arial,sans-serif", "Arial");
+        svg = svg.replaceFirst("rgba\\([0, ]+\\)", "white");
+        svg = svg.replaceAll("g fill=\"rgba\\(0,0,0,0\\)\"", "g fill=\"white\"");
+        while (svg.indexOf("rgba") > 0) {
+            String aux = svg.substring(svg.indexOf("rgba"));
+            aux = aux.substring(0, aux.indexOf(")") + 1);
+            String[] componentes = aux.replace("rgba(", "").replace(")", "").replace(" ", "").split(",");
+            String newFormat = "rgb(" + componentes[0] + ", " + componentes[1] + ", " + componentes[2] + ")\" fill-opacity=\"" + componentes[3];
+            svg = svg.replace(aux, newFormat);
+        }
+        return svg;
+    }
+    
+    public static void main(String... args) {
+        String test = "<svg width=\"100%\" height=\"100%\" style=\"position:absolute;left:0px;top:0px;padding:inherit;\"><defs><clipPath id=\"chart1000267490887$cp0\"><rect x=\"0\" y=\"0\" width=\"343\" height=\"244\"></rect></clipPath></defs><g cursor=\"default\" font-family=\"-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Arial,sans-serif\" font-size=\"12px\" font-weight=\"400\"><g cursor=\"default\"><g><rect width=\"387.109\" height=\"350\" fill=\"rgba(0,0,0,0)\"></rect><g transform=\"matrix(1,0,0,1,158,8)\"><g><rect width=\"95\" height=\"22\" fill=\"rgba(0,0,0,0)\"></rect><g><g><text dominant-baseline=\"text-before-edge\" fill=\"rgba(0, 0, 0, 0.8)\" x=\"20\" y=\"3\">imc</text><g><line x1=\"3\" y1=\"11\" x2=\"13\" y2=\"11\" stroke=\"rgb(35, 123, 177)\" stroke-width=\"2\" shape-rendering=\"crispEdges\"></line><path d=\"M5,8H11V14H5Z\" fill=\"rgb(35, 123, 177)\" shape-rendering=\"crispEdges\"></path></g><rect x=\"1\" y=\"1\" width=\"40\" height=\"20\" fill=\"rgba(0,0,0,0)\"></rect><text dominant-baseline=\"text-before-edge\" fill=\"rgba(0, 0, 0, 0.8)\" x=\"66\" y=\"3\">ideal</text><g><line x1=\"49\" y1=\"11\" x2=\"59\" y2=\"11\" stroke=\"#006600\" stroke-width=\"2\" shape-rendering=\"crispEdges\"></line><path d=\"M51,8H57V14H51Z\" fill=\"#006600\" shape-rendering=\"crispEdges\"></path></g><rect x=\"47\" y=\"1\" width=\"47\" height=\"20\" fill=\"rgba(0,0,0,0)\"></rect></g></g></g></g><g transform=\"matrix(1,0,0,1,10,47)\"><text dominant-baseline=\"middle\" x=\"12.9375\" y=\"244\" text-anchor=\"end\" fill=\"rgba(0, 0, 0, 0.8)\">0</text><text dominant-baseline=\"middle\" x=\"12.9375\" y=\"203.33333333333334\" text-anchor=\"end\" fill=\"rgba(0, 0, 0, 0.8)\">3</text><text dominant-baseline=\"middle\" x=\"12.9375\" y=\"162.66666666666669\" text-anchor=\"end\" fill=\"rgba(0, 0, 0, 0.8)\">6</text><text dominant-baseline=\"middle\" x=\"12.9375\" y=\"122\" text-anchor=\"end\" fill=\"rgba(0, 0, 0, 0.8)\">9</text><text dominant-baseline=\"middle\" x=\"12.9375\" y=\"81.33333333333334\" text-anchor=\"end\" fill=\"rgba(0, 0, 0, 0.8)\">12</text><text dominant-baseline=\"middle\" x=\"12.9375\" y=\"40.66666666666666\" text-anchor=\"end\" fill=\"rgba(0, 0, 0, 0.8)\">15</text><text dominant-baseline=\"middle\" text-anchor=\"end\" fill=\"rgba(0, 0, 0, 0.8)\" x=\"12.9375\">18</text></g><g transform=\"matrix(1,0,0,1,33.9375,301)\"><g><text dominant-baseline=\"text-before-edge\" fill=\"rgba(0, 0, 0, 0.55)\" font-size=\"14px\" text-anchor=\"middle\" x=\"171.53125\" y=\"22\">Historico IMC</text></g><text dominant-baseline=\"text-before-edge\" x=\"171.53125\" text-anchor=\"middle\" fill=\"rgba(0, 0, 0, 0.8)\">21/04/2015</text></g><g transform=\"matrix(1,0,0,1,34,47)\"><rect width=\"343\" height=\"244\" fill=\"rgba(0,0,0,0)\"></rect><g></g><line y1=\"244\" x2=\"343\" y2=\"244\" shape-rendering=\"crispEdges\" stroke=\"rgba(78,82,86,0.4)\" pointer-events=\"none\"></line><path d=\"M0,203.3H343M0,162.7H343M0,122H343M0,81.3H343M0,40.7H343M0,0H343\" shape-rendering=\"crispEdges\" stroke=\"rgba(196,206,215,0.4)\" pointer-events=\"none\"></path><g clip-path=\"url(#chart1000267490887$cp0)\"><g><polyline points=\"171.5 54.2\" fill=\"none\" stroke=\"rgb(35, 123, 177)\" stroke-width=\"3\"></polyline></g><g><polyline points=\"171.5 40.7\" fill=\"none\" stroke=\"#006600\" stroke-width=\"3\"></polyline></g></g><path d=\"M0,244H343\" shape-rendering=\"crispEdges\" stroke=\"#9E9E9E\" pointer-events=\"none\"></path><g fill=\"rgba(0,0,0,0)\"><path d=\"M167,49H177V59H167Z\" fill=\"rgb(35, 123, 177)\" stroke=\"#FFFFFF\" stroke-width=\"1.25\"></path></g><g fill=\"rgba(0,0,0,0)\"><path d=\"M167,36H177V46H167Z\" fill=\"#006600\" stroke=\"#FFFFFF\" stroke-width=\"1.25\"></path></g></g></g></g></g></svg>";
+        System.out.println(test.replaceAll("g fill=\"rgba\\(0,0,0,0\\)\"", "g fill=\"white\""));
+    }
 
-    public static byte[] generarExcelConJSON(JsonObject jsonEntrada) {
+    public static byte[] generarExcelConJSON(JsonObject jsonEntrada, byte[][] graficos) {
         String idAlumno = String.valueOf(jsonEntrada.getJsonArray("mediciones").getJsonObject(0).getInt("id_alumno"));
         String tituloReporte = "Reporte historico de mediciones del Alumno";
         String subTituloReporte = "Mediciones realizadas en campo de datos antropometricos";
@@ -259,10 +285,57 @@ public class SISVANUtils {
 
                 Cell celda = filaExcel.createCell(contadorCelda++);
                 celda.setCellStyle(estiloFilasPares);
-                celda.setCellValue(fila.getString(columna));
+                if(fila.get(columna).getValueType() == NUMBER) {
+                    celda.setCellValue(fila.getJsonNumber(columna).toString());
+                } else {
+                    celda.setCellValue(fila.getString(columna));
+                }                
             }
 
         }
+        
+        //Se inserta el grafico de IMC
+        int idGraficoIMC = libroTrabajo.addPicture(graficos[0], Workbook.PICTURE_TYPE_PNG);
+        
+        XSSFDrawing fondoIMC = hojaCalculo.createDrawingPatriarch();
+        XSSFClientAnchor posicionadorIMC = new XSSFClientAnchor();
+        
+        posicionadorIMC.setCol1(0);
+        posicionadorIMC.setRow1(contadorFilas+1);
+        posicionadorIMC.setDx2(1210000);
+        posicionadorIMC.setDy2(2090000);
+        
+        
+        XSSFPicture  graficoIMC = fondoIMC.createPicture(posicionadorIMC, idGraficoIMC);
+        graficoIMC.resize(1.5);
+        
+        //Se inserta el grafico de Talla
+        int idGraficoTalla = libroTrabajo.addPicture(graficos[1], Workbook.PICTURE_TYPE_PNG);
+        
+        XSSFDrawing fondoTalla = hojaCalculo.createDrawingPatriarch();
+        XSSFClientAnchor posicionadorTalla = new XSSFClientAnchor();
+        
+        posicionadorTalla.setCol1(5);
+        posicionadorTalla.setRow1(contadorFilas+1);
+        posicionadorTalla.setDx2(1450000);
+        posicionadorTalla.setDy2(2090000);
+        
+        XSSFPicture  graficoTalla = fondoTalla.createPicture(posicionadorTalla, idGraficoTalla);
+        graficoTalla.resize(1.5);
+        
+        //Se inserta el grafico de Talla
+        int idGraficoPeso = libroTrabajo.addPicture(graficos[2], Workbook.PICTURE_TYPE_PNG);
+        
+        XSSFDrawing fondoPeso = hojaCalculo.createDrawingPatriarch();
+        XSSFClientAnchor posicionadorPeso = new XSSFClientAnchor();
+        
+        posicionadorPeso.setCol1(11);
+        posicionadorPeso.setRow1(contadorFilas+1);
+        posicionadorPeso.setDx2(2000000);
+        posicionadorPeso.setDy2(2090000);
+        
+        XSSFPicture  graficoPeso = fondoPeso.createPicture(posicionadorPeso, idGraficoPeso);
+        graficoPeso.resize(1.5);
         
         hojaCalculo.addIgnoredErrors(new CellRangeAddress(0, 15, 0, 10), IgnoredErrorType.NUMBER_STORED_AS_TEXT);
 

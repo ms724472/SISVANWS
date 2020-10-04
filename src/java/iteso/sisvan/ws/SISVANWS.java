@@ -11,7 +11,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -33,7 +32,9 @@ import javax.naming.NamingException;
 import javax.sql.DataSource;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.PathParam;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.Response.ResponseBuilder;
@@ -53,7 +54,6 @@ import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
  */
 @Path("wls/1.0")
 public class SISVANWS {
-
     /**
      * Agrega un nuevo alumno a la base de datos
      *
@@ -78,6 +78,126 @@ public class SISVANWS {
 
         return Response.ok(SISVANUtils.insertarNuevoDatoEnBD(cuerpoPeticion, nombresColumnas, query).toString()).header("Access-Control-Allow-Origin", "*").build();
     }
+    
+    /**
+     * Agrega un nueva escuela a la base de datos
+     *
+     * @param cuerpoPeticion contiene todos los datos necesarios para crear un
+     * nueva escuela
+     * @return json mostrando si fue exitosa o no la creacion
+     */
+    @POST
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/escuelas/agregarEscuela")
+    public Response agregarEscuela(String cuerpoPeticion) {
+        String query = "INSERT INTO escuelas(clave_sep, "+ "\n"
+                + "nombre," + "\n"
+                + "direccion," + "\n"
+                + "colonia," + "\n"
+                + "codigo_postal," + "\n"
+                + "telefono," + "\n"
+                + "municipio," + "\n"
+                + "estado)" + "\n"
+                + "VALUES(?,?,?,?,?,?,?,?)";
+
+        String[] nombresColumnas = {"clave_sep", "nombre", "direccion", "colonia", "codigo_postal", "telefono", "municipio", "estado"};
+
+        return Response.ok(SISVANUtils.insertarNuevoDatoEnBD(cuerpoPeticion, nombresColumnas, query).toString()).header("Access-Control-Allow-Origin", "*").build();
+    }
+    
+    /**
+     * Actualizar la informacion de un escuela en base de datos
+     *
+     * @param cuerpoPeticion contiene todos los datos necesarios para
+     * actualizar una escuela.
+     * @return json mostrando si fue exitosa o no la actualizacion
+     */
+    @PUT
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/escuelas/actualizarEscuela")
+    public Response actualizarEscuela(String cuerpoPeticion) {
+        String query = "UPDATE escuelas SET " + "\n"
+                + "nombre = ?, " + "\n"
+                + "clave_sep = ?, " + "\n"
+                + "direccion = ?, " + "\n"
+                + "colonia = ?, " + "\n"
+                + "codigo_postal = ?," + "\n"
+                + "telefono = ?, " + "\n"
+                + "municipio = ?, " + "\n"
+                + "estado = ? " + "\n"
+                + "WHERE id_escuela = ?";
+
+        String[] nombresColumnas = {"nombre", "clave_sep", "direccion", "colonia", "codigo_postal", "telefono", "municipio", "estado", "id_escuela"};
+
+        return Response.ok(SISVANUtils.insertarNuevoDatoEnBD(cuerpoPeticion, nombresColumnas, query).toString()).header("Access-Control-Allow-Origin", "*").build();
+    }
+    
+    /**
+     * Agrega un nuevo grupo a la base de datos
+     *
+     * @param cuerpoPeticion contiene todos los datos necesarios para crear un
+     * nuevo grupo
+     * @return json mostrando si fue exitosa o no la creacion
+     */
+    @POST
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/escuelas/agregarGrupo")
+    public Response agregarGrupo(String cuerpoPeticion) {
+        String query = "INSERT INTO grupos(letra, "+ "\n"
+                + "anio_ingreso," + "\n"
+                + "id_escuela)" + "\n"
+                + "VALUES(?,?,?)";
+
+        String[] nombresColumnas = {"letra", "anio_ingreso", "id_escuela"};
+
+        return Response.ok(SISVANUtils.insertarNuevoDatoEnBD(cuerpoPeticion, nombresColumnas, query).toString()).header("Access-Control-Allow-Origin", "*").build();
+    }
+    
+    /**
+     * Actualizar la informacion de un grupo en base de datos
+     *
+     * @param cuerpoPeticion contiene todos los datos necesarios para
+     * actualizar un grupo.
+     * @return json mostrando si fue exitosa o no la actualizacion
+     */
+    @PUT
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/escuelas/actualizarGrupo")
+    public Response actualizarGrupo(String cuerpoPeticion) {
+        String query = "UPDATE grupos SET " + "\n"
+                + "letra = ?, " + "\n"
+                + "anio_ingreso = ? " + "\n"
+                + "WHERE id_grupo = ?";
+
+        String[] nombresColumnas = {"letra", "anio_ingreso", "id_grupo"};
+
+        return Response.ok(SISVANUtils.insertarNuevoDatoEnBD(cuerpoPeticion, nombresColumnas, query).toString()).header("Access-Control-Allow-Origin", "*").build();
+    }
+    
+    /**
+     * Actualizar la informacion de un alumno en base de datos
+     *
+     * @param cuerpoPeticion contiene todos los datos necesarios para
+     * actualizar un alumno.
+     * @return json mostrando si fue exitosa o no la actualizacion
+     */
+    @POST
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/alumnos/actualizarAlumno")
+    public Response actualizarAlumno(String cuerpoPeticion) {
+        String query = "UPDATE alumnos SET " + "\n"
+                + "nombre = ?, " + "\n"
+                + "apellido_p = ?, " + "\n"
+                + "apellido_m = ?, " + "\n"
+                + "sexo = ?, " + "\n"
+                + "fecha_nac = ?," + "\n"
+                + "id_grupo = ? " + "\n"
+                + "WHERE id_alumno = ?";
+
+        String[] nombresColumnas = {"nombre", "apellido_p", "apellido_m", "sexo", "fecha_nac", "id_grupo", "id_alumno"};
+
+        return Response.ok(SISVANUtils.insertarNuevoDatoEnBD(cuerpoPeticion, nombresColumnas, query).toString()).header("Access-Control-Allow-Origin", "*").build();
+    }
 
     /**
      * Agrega una nueva medicion a un alumno existente
@@ -90,6 +210,7 @@ public class SISVANWS {
     @Path("/alumnos/agregarMedicion")
     public Response agregarMedicion(String cuerpoPeticion) {
         String query = "INSERT INTO datos(id_alumno, " + "\n"
+                + "id_grupo," + "\n"
                 + "fecha," + "\n"
                 + "masa," + "\n"
                 + "estatura," + "\n"
@@ -101,7 +222,7 @@ public class SISVANWS {
         String fecha;
         String id_alumno;
 
-        String[] nombresColumnas = {"id_alumno", "fecha", "masa", "estatura", "perimetro_cuello", "cintura", "triceps", "subescapula", "pliegue_cuello"};
+        String[] nombresColumnas = {"id_alumno", "id_grupo", "fecha", "masa", "estatura", "perimetro_cuello", "cintura", "triceps", "subescapula", "pliegue_cuello"};
 
         try (JsonReader bodyReader = Json.createReader(new StringReader(cuerpoPeticion))) {
             JsonObject datosEntrada = bodyReader.readObject();
@@ -184,19 +305,117 @@ public class SISVANWS {
 
         return Response.ok(respuestaInserccion.toString()).header("Access-Control-Allow-Origin", "*").build();
     }
+    
+    /**
+     * Actualizar una medicion de un alumno existente
+     *
+     * @param cuerpoPeticion contiene los datos de medicion
+     * @return json mostrando si fue exitosa o no la actualizacion
+     */
+    @POST
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/alumnos/actualizarMedicion")
+    public Response actualizarMedicion(String cuerpoPeticion) {
+        String query = "UPDATE datos SET" + "\n"
+                + "id_grupo = ?," + "\n"
+                + "fecha = ?," + "\n"
+                + "masa = ?," + "\n"
+                + "estatura = ?," + "\n"
+                + "perimetro_cuello =?," + "\n"
+                + "cintura = ?, triceps =?," + "\n"
+                + "subescapula = ?," + "\n"
+                + "pliegue_cuello = ?" + "\n"
+                + "WHERE id_alumno = ?";
+        String fecha;
+        String id_alumno;
 
-    @GET
+        String[] nombresColumnas = {"id_grupo", "fecha", "masa", "estatura", "perimetro_cuello", "cintura", "triceps", "subescapula", "pliegue_cuello", "id_alumno"};
+
+        try (JsonReader bodyReader = Json.createReader(new StringReader(cuerpoPeticion))) {
+            JsonObject datosEntrada = bodyReader.readObject();
+            
+            fecha = datosEntrada.getString("fecha");
+            id_alumno = datosEntrada.getString("id_alumno");            
+        }
+        
+        JsonObject respuestaInserccion = SISVANUtils.insertarNuevoDatoEnBD(cuerpoPeticion, nombresColumnas, query);
+        
+        if(respuestaInserccion.containsKey("status") && respuestaInserccion.getString("status").equals("exito")) {
+            String actualizacionPuntajes = "SELECT actualizar_puntajes(?, ?)";
+            DataSource datasource;
+            JsonObjectBuilder jsonObjectBuilder
+                = Json.createObjectBuilder();
+            
+            try {
+                datasource = (DataSource) new InitialContext().lookup(DB_JNDI);
+            } catch (NamingException ex) {
+                jsonObjectBuilder.add("error", "Error al intentar obtener la conexión con la base de datos.");
+                jsonObjectBuilder.add("mensaje", ex.getMessage());
+                respuestaInserccion = jsonObjectBuilder.build();
+                return Response.ok(respuestaInserccion.toString()).header("Access-Control-Allow-Origin", "*").build();
+            }
+
+            //Inicializando la conexión a la base de datos
+            try (Connection dbConnection = datasource.getConnection();
+                    PreparedStatement statement = dbConnection.prepareStatement(actualizacionPuntajes)) {
+                statement.setString(1, id_alumno);
+                statement.setString(2, fecha);
+                
+                try(ResultSet resultado = statement.executeQuery()) {
+                    if(!resultado.next()) {
+                        respuestaInserccion.remove("status");
+                        respuestaInserccion.put("status", JsonValue.FALSE);
+                    }
+                }
+            } catch (SQLException exception) {
+                jsonObjectBuilder.add("error", "Error al actualizar los puntajes z.");
+                jsonObjectBuilder.add("mensaje", exception.getMessage());
+                respuestaInserccion = jsonObjectBuilder.build();
+                return Response.ok(respuestaInserccion.toString()).header("Access-Control-Allow-Origin", "*").build();
+            }
+        }
+
+        return Response.ok(respuestaInserccion.toString()).header("Access-Control-Allow-Origin", "*").build();
+    }
+
+    @POST
     @Produces("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    @Path("/alumnos/generarExcel/{id_alumno}")
-    public Response generarExcel(@PathParam("id_alumno") String id_alumno) throws IOException {
+    @Path("/alumnos/generarExcel")
+    public Response generarExcel(String cuerpoPeticion) throws IOException {
+        JsonObject peticionJSON = Json.createReader(new StringReader(cuerpoPeticion)).readObject(); 
         JsonObjectBuilder constructorJSON = Json.createObjectBuilder();
+        String id_alumno = peticionJSON.getString("id_alumno");
+        int ancho = peticionJSON.getInt("ancho");
+        int alto = peticionJSON.getInt("alto");
+        String[] graficos = {SISVANUtils.prepararSVG(peticionJSON.getString("grafico_imc"), ancho, alto),
+            SISVANUtils.prepararSVG(peticionJSON.getString("grafico_talla"), ancho, alto),
+            SISVANUtils.prepararSVG(peticionJSON.getString("grafico_peso"), ancho, alto)};
+        
+        byte[][] resultados = new byte[3][];
+        int contadorGrafico = 0;
+        for (String grafico : graficos) {
+            InputStream svgStream = new ByteArrayInputStream(grafico.getBytes());
+            TranscoderInput imagenSVG = new TranscoderInput(svgStream);
+            try (ByteArrayOutputStream streamPNG = new ByteArrayOutputStream()) {
+                TranscoderOutput imagenPNG = new TranscoderOutput(streamPNG);
+                PNGTranscoder convertidor = new PNGTranscoder();
+                convertidor.transcode(imagenSVG, imagenPNG);
+                streamPNG.flush();
+                resultados[contadorGrafico++] = streamPNG.toByteArray();
+            } catch (Exception exception) {
+                constructorJSON.add("error", "Error al procesar los graficos.");
+                constructorJSON.add("mensaje", exception.getMessage());
+                return Response.ok(constructorJSON.build().toString()).header("Access-Control-Allow-Origin", "*").build();
+            }
+        }
+                
         JsonObject datosAlumno = Json.createReader(new StringReader(obtenerDatos(id_alumno)
                 .getEntity().toString())).readObject();
         JsonObject medicionesAlumno = Json.createReader(new StringReader(obtenerMediciones(id_alumno)
                 .getEntity().toString())).readObject();
         constructorJSON.add("datos", datosAlumno.get("datos"));
         constructorJSON.add("mediciones", medicionesAlumno.get("mediciones"));
-        ResponseBuilder response = Response.ok(SISVANUtils.generarExcelConJSON(constructorJSON.build()));
+        ResponseBuilder response = Response.ok(SISVANUtils.generarExcelConJSON(constructorJSON.build(), resultados));
         response.header("Content-Disposition", "attachment; Reporte.xlsx");
         response.header("Access-Control-Allow-Origin", "*");
         return response.build();
@@ -330,11 +549,14 @@ public class SISVANWS {
         String query = "SELECT alumnos.nombre," + "\n"
                 + "apellido_p," + "\n"
                 + "apellido_m," + "\n"
-                + "sexo," + "\n"
+                + "CONCAT(UPPER(SUBSTRING(sexo, 1, 1)), SUBSTRING(sexo, 2)) as sexo," + "\n"
                 + "fecha_nac," + "\n"
                 + "escuelas.nombre as escuela," + "\n"
                 + "escuelas.id_escuela," + "\n"
-                + "IF ((YEAR(CURDATE()) - anio_ingreso) > 6, 'EGRESADO', (YEAR(CURDATE()) - anio_ingreso)) as grado," + "\n"
+                + "grupos.id_grupo," + "\n"
+                + "IF (calcular_grado(grupos.anio_ingreso, CURDATE()) > 6, "  + "\n"
+                + "'EGRESADO', " + "\n"
+                + "calcular_grado(grupos.anio_ingreso, CURDATE())) as grado," + "\n"
                 + "letra" + "\n"
                 + "FROM alumnos, grupos, escuelas" + "\n"
                 + "WHERE id_alumno = ?" + "\n"
@@ -382,7 +604,15 @@ public class SISVANWS {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/obtenerDatosGrupos/{idGrupo}")
     public Response obtenerDatosGrupos(@PathParam("idGrupo") String idGrupo) {
-        String query = "SELECT id_grupo, letra, anio_ingreso, anio_graduacion, IF ((YEAR(CURDATE()) - anio_ingreso) > 6, 'EGRESADO', (YEAR(CURDATE()) - anio_ingreso)) as grado FROM grupos WHERE id_escuela = ? GROUP BY concat(anio_ingreso, letra)";
+        String query = "SELECT id_grupo, \n" +
+                       "       letra, \n" +
+                       "       anio_ingreso, \n" +
+                       "       anio_graduacion, \n" +
+                       "       IF (calcular_grado(grupos.anio_ingreso, CURDATE()) > 6, \n" +
+                       "        'EGRESADO', \n" +
+                       "	calcular_grado(grupos.anio_ingreso, CURDATE())) as grado\n" +
+                       "FROM grupos \n" +
+                       "WHERE id_escuela = ? GROUP BY concat(anio_ingreso, letra)";
 
         return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, idGrupo, "grupos", true).toString()).header("Access-Control-Allow-Origin", "*").build();
     }
@@ -397,9 +627,24 @@ public class SISVANWS {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/escuelas/obtenerGrupos/{idEscuela}")
     public Response obtenerGrupos(@PathParam("idEscuela") String idEscuela) {
-        String query = "SELECT id_grupo as value, IF ((YEAR(CURDATE()) - anio_ingreso) > 6, 'EGRESADO', concat((YEAR(CURDATE()) - anio_ingreso),' ', letra)) as label FROM grupos WHERE id_escuela = ?";
+        String query = "SELECT id_grupo as value, concat(calcular_grado(anio_ingreso, CURDATE()),' ', letra) as label FROM grupos WHERE id_escuela = ? AND calcular_grado(anio_ingreso, CURDATE()) <= 6";
 
         return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, idEscuela, "grupos", true).toString()).header("Access-Control-Allow-Origin", "*").build();
+    }
+    
+    /**
+     * Obtener las fechas para inicializar rangos
+     *
+     * @return json con las fechas para inicializar rangos.
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/obtenerRangos")
+    public Response obtenerRangos() {
+        String query = "SELECT obtener_rangos(MIN(fecha), true) as desde, obtener_rangos(MIN(fecha), false) as hasta \n" +
+                       "FROM datos \n" +
+                       "WHERE fecha between obtener_rangos((SELECT MAX(fecha) from datos), true) AND obtener_rangos((SELECT MAX(fecha) from datos), false)";
+        return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, "", "rangos", false).toString()).header("Access-Control-Allow-Origin", "*").build();
     }
     
     /**
@@ -409,62 +654,74 @@ public class SISVANWS {
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    @Path("/grupos/obtenerTodosLosGrupos")
-    public Response obtenerTodosLosGrupos() { 
+    @Path("/grupos/obtenerTodosLosGrupos/{fecha}")
+    public Response obtenerTodosLosGrupos(@PathParam("fecha") String fecha) { 
         JsonObjectBuilder jsonObjectBuilder
                 = Json.createObjectBuilder();
         JsonObject response;
         DataSource datasource;
-        String query = "SELECT id_escuela, id_grupo as value, concat(concat((YEAR(CURDATE()) - anio_ingreso), ' '), letra) as label " + "\n"
+        String query = "SELECT id_escuela, id_grupo as value, concat(concat(calcular_grado(anio_ingreso, ?), ' '), letra) as label " + "\n"
                        + "FROM grupos " + "\n"
-                       + "WHERE (YEAR(CURDATE()) - anio_ingreso) <= 6";
+                       + "WHERE calcular_grado(anio_ingreso, ?) >= 1 AND calcular_grado(anio_ingreso, ?) <= 6";
         
         //Encontrar la clase para poder realizar la conexión con RDS
-            try {
-                datasource = (DataSource) new InitialContext().lookup(SISVANUtils.DB_JNDI);
-            } catch (NamingException ex) {
-                jsonObjectBuilder.add("error", "Error al intentar obtener la conexión con la base de datos.");
-                jsonObjectBuilder.add("mensaje", ex.getMessage());
-                response = jsonObjectBuilder.build();
-                return Response.ok(response.toString()).header("Access-Control-Allow-Origin", "*").build();
+        try {
+            datasource = (DataSource) new InitialContext().lookup(SISVANUtils.DB_JNDI);
+        } catch (NamingException ex) {
+            jsonObjectBuilder.add("error", "Error al intentar obtener la conexión con la base de datos.");
+            jsonObjectBuilder.add("mensaje", ex.getMessage());
+            response = jsonObjectBuilder.build();
+            return Response.ok(response.toString()).header("Access-Control-Allow-Origin", "*").build();
+        }
+        
+        if(fecha.equals("hoy")) {
+            query = query.replaceAll("\\?", "CURDATE()");
+        }
+        
+        //Obteniendo la información de la base de datos
+        try (Connection dbConnection = datasource.getConnection();
+                PreparedStatement statement = dbConnection.prepareStatement(query)) {
+            
+            if(!fecha.equals("hoy")) {
+                statement.setString(1, fecha);
+                statement.setString(2, fecha);
+                statement.setString(3, fecha);
             }
-
-            //Obteniendo la información de la base de datos
-            try (Connection dbConnection = datasource.getConnection();
-                    PreparedStatement statement = dbConnection.prepareStatement(query);
-                    ResultSet resultados = statement.executeQuery()) {
+            
+            try (ResultSet resultados = statement.executeQuery()) {
                 String idEscuela = null;
                 JsonArrayBuilder gruposPorEscuela
-                    = Json.createArrayBuilder();
-                while(resultados.next()) {
-                    if(idEscuela == null || !idEscuela.equals(String.valueOf(resultados.getInt(1)))) {
-                        if(idEscuela != null) {
+                        = Json.createArrayBuilder();
+                while (resultados.next()) {
+                    if (idEscuela == null || !idEscuela.equals(String.valueOf(resultados.getInt(1)))) {
+                        if (idEscuela != null) {
                             jsonObjectBuilder.add(idEscuela, gruposPorEscuela);
                             gruposPorEscuela = Json.createArrayBuilder();
                         }
                         idEscuela = String.valueOf(resultados.getInt(1));
-                    } 
-                    
+                    }
+
                     gruposPorEscuela.add(
                             Json.createObjectBuilder()
                                     .add("value", resultados.getInt(2))
                                     .add("label", resultados.getString(3)));
                 }
-                jsonObjectBuilder.add(idEscuela, gruposPorEscuela);
-                response = jsonObjectBuilder.build();
-            } catch(SQLException exception) {
-                jsonObjectBuilder.add("error", "Error al intentar obtener informacion de la base de datos.");
+                if (idEscuela != null) {
+                    jsonObjectBuilder.add(idEscuela, gruposPorEscuela);
+                }
                 response = jsonObjectBuilder.build();
             }
-        
+        } catch (SQLException exception) {
+            jsonObjectBuilder.add("error", "Error al intentar obtener informacion de la base de datos.");
+            response = jsonObjectBuilder.build();
+        }
+
         return Response.ok(response.toString()).build();               
     }    
     
     public static void main(String... args) {
-        String test = null;
-        if(test.equals("false")) {
-            System.out.println("hola");
-        }
+        String test = "SELECT ? FROM ?";
+        System.out.println(test.replaceAll("\\?", ""));
     }
 
     /**
@@ -489,7 +746,7 @@ public class SISVANWS {
     }
 
     /**
-     * Obtener el historico de la estatura del alumno
+     * Obtener el historico de la peso del alumno
      *
      * @param idAlumno identificador unico del alumno
      * @return json con toda la informacion de la base de datos
@@ -508,6 +765,27 @@ public class SISVANWS {
 
         return Response.ok(SISVANUtils.generarJSONGraficoLinea(query, idAlumno, "fecha", true).toString()).header("Access-Control-Allow-Origin", "*").build();
     }
+    
+    /**
+     * Obtener el historico de la imc del alumno
+     *
+     * @param idAlumno identificador unico del alumno
+     * @return json con toda la informacion de la base de datos
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/alumnos/obtenerHistoricoIMC/{idAlumno}")
+    public Response obtenerHistoricoIMC(@PathParam("idAlumno") String idAlumno) {
+        String query = "SELECT date_format(fecha, '%d/%m/%Y') as fecha, "
+                + "imc, "
+                + "mediana as ideal "
+                + "FROM datos" + "\n"
+                + "INNER JOIN alumnos ON alumnos.id_alumno = datos.id_alumno" + "\n"
+                + "INNER JOIN percentiles_oms_imc ON id_percentil = concat(alumnos.sexo,timestampdiff(MONTH, alumnos.fecha_nac, datos.fecha))" + "\n"
+                + "WHERE datos.id_alumno = ?";
+
+        return Response.ok(SISVANUtils.generarJSONGraficoLinea(query, idAlumno, "fecha", true).toString()).header("Access-Control-Allow-Origin", "*").build();
+    }
 
     /**
      * Obtener todas las mediciones del alumno dado
@@ -519,8 +797,10 @@ public class SISVANWS {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/alumnos/obtenerMediciones/{idAlumno}")
     public Response obtenerMediciones(@PathParam("idAlumno") String idAlumno) {
-        String query = "SELECT datos.*, timestampdiff(MONTH, alumnos.fecha_nac, datos.fecha) as meses " + "\n"
+        String query = "SELECT datos.*, timestampdiff(MONTH, alumnos.fecha_nac, datos.fecha) as meses, " + "\n"
+                + "CONCAT(CONCAT(calcular_grado(grupos.anio_ingreso, datos.fecha), ' '), grupos.letra) as grupo " + "\n"
                 + "FROM datos JOIN alumnos ON datos.id_alumno = alumnos.id_alumno" + "\n"
+                + "JOIN grupos ON datos.id_grupo = grupos.id_grupo" + "\n"
                 + "WHERE alumnos.id_alumno = ?";
 
         return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, idAlumno, "mediciones", true).toString()).header("Access-Control-Allow-Origin", "*").build();
@@ -534,16 +814,15 @@ public class SISVANWS {
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    @Path("/escolares/obtenerPorcentajesEscuela/{id_escuela}")
-    public Response obtenerPorcentajesEscuela(@PathParam("id_escuela") String id_escuela) {
+    @Path("/escolares/obtenerPorcentajesEscuela")
+    public Response obtenerPorcentajesEscuela(@QueryParam("id_escuela") String id_escuela,
+            @QueryParam("desde") String desde,
+            @QueryParam("hasta") String hasta) {
         String query = "SELECT concat('Escuela ', id_grupo) as grupo, diagnostico, COUNT(*) as value \n"
                 + "FROM (SELECT alumnos.id_grupo, alumnos.id_alumno, ROUND(masa) as masa, timestampdiff(MONTH, alumnos.fecha_nac, d.fecha) as meses, sexo, d.diagnostico_imc as diagnostico FROM datos d INNER JOIN alumnos\n"
                 + "ON alumnos.id_alumno = d.id_alumno\n"
-                + "WHERE d.fecha = (\n"
-                + "SELECT MAX(d2.fecha)\n"
-                + "FROM datos d2\n"
-                + "WHERE d.id_alumno = d2.id_alumno \n"
-                + ") AND id_grupo IN (SELECT id_grupo FROM grupos WHERE id_escuela = ?)) subdatos\n"
+                + "WHERE d.fecha between '" + desde + "' and '" + hasta + "' \n"
+                + "AND d.id_grupo IN (SELECT id_grupo FROM grupos WHERE id_escuela = ?)) subdatos\n"
                 + "GROUP BY diagnostico;";
 
         return Response.ok(SISVANUtils.generarJSONGraficoPastel(query, id_escuela, "escuela").toString()).header("Access-Control-Allow-Origin", "*").build();
@@ -557,16 +836,14 @@ public class SISVANWS {
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    @Path("/escolares/obtenerPorcentajesGrupo/{id_grupo}")
-    public Response obtenerPorcentajesGrupo(@PathParam("id_grupo") String id_grupo) {
+    @Path("/escolares/obtenerPorcentajesGrupo")
+    public Response obtenerPorcentajesGrupo(@QueryParam("id_grupo") String id_grupo,
+            @QueryParam("desde") String desde,
+            @QueryParam("hasta") String hasta) {
         String query = "SELECT concat('Grupo ', id_grupo) as grupo, diagnostico, COUNT(*) as value \n"
                 + "FROM (SELECT alumnos.id_grupo, alumnos.id_alumno, ROUND(masa) as masa, timestampdiff(MONTH, alumnos.fecha_nac, d.fecha) as meses, sexo, d.diagnostico_imc as diagnostico FROM datos d INNER JOIN alumnos\n"
                 + "ON alumnos.id_alumno = d.id_alumno\n"
-                + "WHERE d.fecha = (\n"
-                + "SELECT MAX(d2.fecha)\n"
-                + "FROM datos d2\n"
-                + "WHERE d.id_alumno = d2.id_alumno \n"
-                + ") AND id_grupo = ?) subdatos\n"
+                + "WHERE d.fecha between '" + desde + "' and '" + hasta + "'  AND d.id_grupo = ?) subdatos\n"
                 + "GROUP BY diagnostico;";
 
         return Response.ok(SISVANUtils.generarJSONGraficoPastel(query, id_grupo, "grupo").toString()).header("Access-Control-Allow-Origin", "*").build();
@@ -611,22 +888,12 @@ public class SISVANWS {
     @Produces("application/pdf")
     @Path("/generarPDF")
     public Response generarPDF(String contenido) {
-        JsonObject peticionJSON = Json.createReader(new StringReader(contenido)).readObject();
-        String svg = peticionJSON.getString("svg");
+        JsonObject peticionJSON = Json.createReader(new StringReader(contenido)).readObject();        
         String tipo = peticionJSON.getString("tipo");
         int ancho = peticionJSON.getInt("ancho");
         int alto = peticionJSON.getInt("alto");
-        ByteArrayOutputStream streamPDF = new ByteArrayOutputStream();
-        svg = svg.replace("<svg width=\"100%\" height=\"100%\" style=\"position: absolute; left: 0px; top: 0px; padding: inherit;\">", "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" + ancho + "px\" height=\"" + alto + "px\">");
-        svg = svg.replace("-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Arial,sans-serif", "Arial");
-        svg = svg.replaceFirst("rgba\\([0, ]+\\)", "white");
-        while (svg.indexOf("rgba") > 0) {
-            String aux = svg.substring(svg.indexOf("rgba"));
-            aux = aux.substring(0, aux.indexOf(")") + 1);
-            String[] componentes = aux.replace("rgba(", "").replace(")", "").replace(" ", "").split(",");
-            String newFormat = "rgb(" + componentes[0] + ", " + componentes[1] + ", " + componentes[2] + ")\" fill-opacity=\"" + componentes[3];
-            svg = svg.replace(aux, newFormat);
-        }
+        String svg = SISVANUtils.prepararSVG(peticionJSON.getString("svg"), ancho, alto);
+        ByteArrayOutputStream streamPDF = new ByteArrayOutputStream();        
         InputStream svgStream = new ByteArrayInputStream(svg.getBytes());
         TranscoderInput imagenSVG = new TranscoderInput(svgStream);
         try (ByteArrayOutputStream streamPNG = new ByteArrayOutputStream()) {
