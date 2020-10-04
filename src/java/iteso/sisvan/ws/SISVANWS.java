@@ -810,6 +810,9 @@ public class SISVANWS {
      * Obtener los porcentajes de alumnos de cada escuela
      *
      * @param id_escuela identificador unico de la escuela
+     * @param desde la fecha inicial de la cual se diagnosticara
+     * @param hasta la fecha final de la cual se diagnosticara
+     * @param diagnostico el tipo de diagnostico que se reaizara
      * @return json con toda la informacion de la base de datos
      */
     @GET
@@ -817,21 +820,27 @@ public class SISVANWS {
     @Path("/escolares/obtenerPorcentajesEscuela")
     public Response obtenerPorcentajesEscuela(@QueryParam("id_escuela") String id_escuela,
             @QueryParam("desde") String desde,
-            @QueryParam("hasta") String hasta) {
+            @QueryParam("hasta") String hasta,
+            @QueryParam("diagnostico") String diagnostico) {
+        String columnaDiagnostico = diagnostico.equals("talla") ? "diagnostico_talla" : diagnostico.equals("peso") ? "diagnostico_peso" : "diagnostico_imc";
+        
         String query = "SELECT concat('Escuela ', id_grupo) as grupo, diagnostico, COUNT(*) as value \n"
-                + "FROM (SELECT alumnos.id_grupo, alumnos.id_alumno, ROUND(masa) as masa, timestampdiff(MONTH, alumnos.fecha_nac, d.fecha) as meses, sexo, d.diagnostico_imc as diagnostico FROM datos d INNER JOIN alumnos\n"
+                + "FROM (SELECT alumnos.id_grupo, alumnos.id_alumno, ROUND(masa) as masa, timestampdiff(MONTH, alumnos.fecha_nac, d.fecha) as meses, sexo, d." + columnaDiagnostico + " as diagnostico FROM datos d INNER JOIN alumnos\n"
                 + "ON alumnos.id_alumno = d.id_alumno\n"
-                + "WHERE d.fecha between '" + desde + "' and '" + hasta + "' \n"
+                + "WHERE d.fecha between ? and ? \n"
                 + "AND d.id_grupo IN (SELECT id_grupo FROM grupos WHERE id_escuela = ?)) subdatos\n"
                 + "GROUP BY diagnostico;";
 
-        return Response.ok(SISVANUtils.generarJSONGraficoPastel(query, id_escuela, "escuela").toString()).header("Access-Control-Allow-Origin", "*").build();
+        return Response.ok(SISVANUtils.generarJSONGraficoPastel(query, id_escuela, desde, hasta, "escuela").toString()).header("Access-Control-Allow-Origin", "*").build();
     }
 
     /**
      * Obtener los porcentajes de alumnos de cada grupo
      *
      * @param id_grupo identificador unico del grupo
+     * @param desde la fecha inicial de la cual se diagnosticara
+     * @param hasta la fecha final de la cual se diagnosticara
+     * @param diagnostico el tipo de diagnostico que se reaizara
      * @return json con toda la informacion de la base de datos
      */
     @GET
@@ -839,14 +848,17 @@ public class SISVANWS {
     @Path("/escolares/obtenerPorcentajesGrupo")
     public Response obtenerPorcentajesGrupo(@QueryParam("id_grupo") String id_grupo,
             @QueryParam("desde") String desde,
-            @QueryParam("hasta") String hasta) {
+            @QueryParam("hasta") String hasta,
+            @QueryParam("diagnostico") String diagnostico) {
+        String columnaDiagnostico = diagnostico.equals("talla") ? "diagnostico_talla" : diagnostico.equals("peso") ? "diagnostico_peso" : "diagnostico_imc";
+        
         String query = "SELECT concat('Grupo ', id_grupo) as grupo, diagnostico, COUNT(*) as value \n"
-                + "FROM (SELECT alumnos.id_grupo, alumnos.id_alumno, ROUND(masa) as masa, timestampdiff(MONTH, alumnos.fecha_nac, d.fecha) as meses, sexo, d.diagnostico_imc as diagnostico FROM datos d INNER JOIN alumnos\n"
+                + "FROM (SELECT alumnos.id_grupo, alumnos.id_alumno, ROUND(masa) as masa, timestampdiff(MONTH, alumnos.fecha_nac, d.fecha) as meses, sexo, d." + columnaDiagnostico + " as diagnostico FROM datos d INNER JOIN alumnos\n"
                 + "ON alumnos.id_alumno = d.id_alumno\n"
-                + "WHERE d.fecha between '" + desde + "' and '" + hasta + "'  AND d.id_grupo = ?) subdatos\n"
+                + "WHERE d.fecha between ? and ? AND d.id_grupo = ?) subdatos\n"
                 + "GROUP BY diagnostico;";
 
-        return Response.ok(SISVANUtils.generarJSONGraficoPastel(query, id_grupo, "grupo").toString()).header("Access-Control-Allow-Origin", "*").build();
+        return Response.ok(SISVANUtils.generarJSONGraficoPastel(query, id_grupo, desde, hasta, "grupo").toString()).header("Access-Control-Allow-Origin", "*").build();
     }
 
     /**

@@ -421,7 +421,7 @@ public class SISVANUtils {
         return response;
     }
 
-    public static JsonObject generarJSONGraficoPastel(String query, String idAlumno, String nombreSerieX) {
+    public static JsonObject generarJSONGraficoPastel(String query, String idAlumno, String desde, String hasta, String nombreSerieX) {
         DataSource datasource;
         JsonObjectBuilder jsonObjectBuilder
                 = Json.createObjectBuilder();
@@ -440,7 +440,9 @@ public class SISVANUtils {
 
         try (Connection dbConnection = datasource.getConnection();
                 PreparedStatement statement = dbConnection.prepareStatement(query)) {
-            statement.setString(1, idAlumno);
+            statement.setString(1, desde);
+            statement.setString(2, hasta);
+            statement.setString(3, idAlumno);
 
             try (ResultSet result = statement.executeQuery()) {
                 JsonArrayBuilder constructorArregloJSON
@@ -451,7 +453,7 @@ public class SISVANUtils {
                     if (!hayInformacion) {
                         hayInformacion = true;
                     }
-                    int numColumnas = result.getMetaData().getColumnCount();
+                    
                     JsonObjectBuilder alumno
                             = Json.createObjectBuilder();
 
