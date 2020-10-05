@@ -3,20 +3,23 @@ CREATE TABLE usuarios(correo varchar(255) PRIMARY KEY NOT NULL,
                         contrasenia varchar(255) NOT NULL,
                         roles BLOB);
 
-CREATE TABLE escuelas(id_escuela INT PRIMARY KEY NOT NULL,
+CREATE TABLE escuelas(id_escuela INT PRIMARY KEY NOT NULL AUTO_INCREMENT,
+						clave_sep varchar(50) NOT NULL UNIQUE,
 						nombre varchar(255) NOT NULL,
                         direccion varchar(255) NOT NULL,
+                        colonia varchar(255) NOT NULL,
+						codigo_postal INT NOT NULL,
+						telefono varchar(10) NOT NULL,
                         municipio varchar(100)  NOT NULL,
                         estado varchar(50) NOT NULL);
                         
-CREATE TABLE grupos(id_grupo INT PRIMARY KEY NOT NULL,
-					grado INT NOT NULL,
+CREATE TABLE grupos(id_grupo INT PRIMARY KEY NOT NULL AUTO_INCREMENT,
                     letra varchar(1),
                     anio_ingreso INT NOT NULL,
-                    anio_graduacion INT,
+                    anio_graduacion INT AS (anio_ingreso + 6) NOT NULL,
                     id_escuela INT NOT NULL,
                     FOREIGN KEY (id_escuela) REFERENCES escuelas(id_escuela)
-);                   
+);                      
 
 CREATE TABLE alumnos(id_alumno INT PRIMARY KEY NOT NULL,
 					nombre varchar(30) NOT NULL,
@@ -28,6 +31,7 @@ CREATE TABLE alumnos(id_alumno INT PRIMARY KEY NOT NULL,
                     FOREIGN KEY (id_grupo) REFERENCES grupos(id_grupo));
                     
 CREATE TABLE datos(id_alumno INT NOT NULL,
+					id_grupo INT NOT NULL,
 					fecha DATE NOT NULL,
                     masa DECIMAL(3,1) NOT NULL,
                     diagnostico_peso varchar(30),
@@ -42,8 +46,10 @@ CREATE TABLE datos(id_alumno INT NOT NULL,
                     cintura FLOAT,
                     triceps FLOAT,
                     subescapula FLOAT,
-                    pliegue_cuello FLOAT,                    
-                    FOREIGN KEY (id_alumno) REFERENCES alumnos(id_alumno)); 
+                    pliegue_cuello FLOAT,           
+                    FOREIGN KEY (id_grupo) REFERENCES grupos(id_grupo),
+                    FOREIGN KEY (id_alumno) REFERENCES alumnos(id_alumno),
+                    PRIMARY KEY (id_alumno, fecha));    
 					
 CREATE TABLE percentiles_oms_imc(
 	id_percentil varchar(25) PRIMARY KEY NOT NULL,
@@ -64,7 +70,50 @@ CREATE TABLE percentiles_oms_peso(
     normalizador float NOT NULL,
     mediana float NOT NULL,
     coeficiente_variacion float NOT NULL
-); 					
+); 	
+
+DROP function IF EXISTS `obtener_rangos`;
+
+DELIMITER $$
+CREATE FUNCTION `obtener_rangos` (
+    fecha DATE,
+    esDesde BOOLEAN
+)
+RETURNS VARCHAR(10)
+DETERMINISTIC
+BEGIN
+	DECLARE fecha_calculada VARCHAR(10);
+
+	IF esDesde THEN
+		IF MONTH(fecha) >= 8 AND MONTH(fecha) <= 12 THEN
+			SET fecha_calculada = CONCAT(YEAR(fecha), '-08-01');
+		ELSE
+			SET fecha_calculada = CONCAT(YEAR(fecha)-1, '-08-01');
+		END IF;
+    ELSE
+		IF MONTH(fecha) >= 8 AND MONTH(fecha) <= 12 THEN
+			SET fecha_calculada = CONCAT(YEAR(fecha)+1, '-07-31');
+		ELSE
+			SET fecha_calculada = CONCAT(YEAR(fecha), '-07-31');
+		END IF;
+    END IF;
+RETURN fecha_calculada;
+END$$
+DELIMITER ;    
+
+DROP function IF EXISTS `calcular_grado`;
+
+DELIMITER $$
+CREATE FUNCTION `calcular_grado` (
+	anio_ingreso INT,
+    fecha DATE
+)
+RETURNS INT
+DETERMINISTIC
+BEGIN
+RETURN CEILING(timestampdiff(MONTH, CONCAT(anio_ingreso, '-08-01'), fecha)/12);
+END$$
+DELIMITER ;				
 
 DROP function IF EXISTS `actualizar_puntajes`;
 
@@ -146,7 +195,7 @@ BEGIN
 		SET diagnostico = 'Bajo peso';
 	ELSEIF puntaje_z <= 1.0 THEN
 		SET diagnostico = "Sin exceso de peso";
-	ELSEIF puntaje_z > 1.0 AND resultado_lms <= 2.0 THEN
+	ELSEIF puntaje_z > 1.0 AND puntaje_z <= 2.0 THEN
 		SET diagnostico = "Sobrepeso";
 	ELSEIF resultado_lms > 2.0 THEN
 		SET puntaje_z = "Obesidad";
