@@ -12,6 +12,7 @@ import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
@@ -27,12 +28,14 @@ import javax.sql.DataSource;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
 import org.apache.poi.ss.usermodel.IgnoredErrorType;
 import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFClientAnchor;
+import org.apache.poi.xssf.usermodel.XSSFColor;
 import org.apache.poi.xssf.usermodel.XSSFDrawing;
 import org.apache.poi.xssf.usermodel.XSSFFont;
 import org.apache.poi.xssf.usermodel.XSSFPicture;
@@ -163,7 +166,7 @@ public class SISVANUtils {
         CellStyle estiloSubTitulo = libroTrabajo.createCellStyle();
 
         CellStyle estiloEncabezados = libroTrabajo.createCellStyle();
-        estiloEncabezados.setFillForegroundColor(IndexedColors.BLUE.getIndex());
+        estiloEncabezados.setFillForegroundColor(IndexedColors.PALE_BLUE.getIndex());
         estiloEncabezados.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
         CellStyle estiloFilasPares = libroTrabajo.createCellStyle();
@@ -202,7 +205,6 @@ public class SISVANUtils {
         letraEncabezados.setFontName("Calibri");
         letraEncabezados.setFontHeightInPoints((byte) 10);
         letraEncabezados.setBold(true);
-        letraEncabezados.setColor(IndexedColors.WHITE.getIndex());
         estiloEncabezados.setFont(letraEncabezados);
 
         XSSFFont letraFilas = libroTrabajo.createFont();
@@ -305,7 +307,6 @@ public class SISVANUtils {
         posicionadorIMC.setDx2(1210000);
         posicionadorIMC.setDy2(2090000);
         
-        
         XSSFPicture  graficoIMC = fondoIMC.createPicture(posicionadorIMC, idGraficoIMC);
         graficoIMC.resize(1.5);
         
@@ -349,6 +350,109 @@ public class SISVANUtils {
         } catch (IOException ex) {
             return ex.getMessage().getBytes();
         }
+    }
+    
+    public static byte[] generarExcelGrupal(String desde, String hasta, String id_escuela) throws NamingException, SQLException, IOException {
+        XSSFWorkbook libroTrabajo = new XSSFWorkbook();
+        XSSFSheet hojaCalculo = libroTrabajo.createSheet("Antropometria");
+        DataSource datasource;
+        String query = "SELECT DATE_FORMAT(datos.fecha, '%d/%m/%Y') 'Fecha Medición', escuelas.nombre 'Escuela', \n" +
+                        "calcular_grado(grupos.anio_ingreso, datos.fecha) 'Grado', grupos.letra 'Grupo', alumnos.id_alumno 'Identificador Alumno', \n" +
+                        "upper(CONCAT(alumnos.apellido_p, ' ', alumnos.apellido_m, ' ', alumnos.nombre)) 'Nombre Alumno', \n" +
+                        "upper(alumnos.sexo) 'Sexo',\n" +
+                        "DATE_FORMAT(alumnos.fecha_nac, '%d/%m/%Y') 'Fecha de Nacimiento',\n" +
+                        "datos.masa 'Peso',\n" +
+                        "datos.estatura 'Talla',\n" +
+                        "datos.imc 'IMC',\n" +
+                        "datos.perimetro_cuello 'Perimetro Cuello',\n" +
+                        "datos.cintura 'Cintura',\n" +
+                        "datos.triceps 'Triceps',\n" +
+                        "datos.subescapula 'Subescapular',\n" +
+                        "datos.pliegue_cuello 'Pliegue Cuello'\n" +
+                        "FROM datos INNER JOIN alumnos ON datos.id_alumno = alumnos.id_alumno\n" +
+                        "INNER JOIN grupos on alumnos.id_grupo = grupos.id_grupo \n" +
+                        "INNER JOIN escuelas ON grupos.id_escuela = escuelas.id_escuela\n" +
+                        "WHERE grupos.id_escuela = ? AND datos.fecha between ? and ?";
+
+        //Encontrar la clase para poder realizar la conexión con RDS
+        datasource = (DataSource) new InitialContext().lookup(DB_JNDI);
+        
+        Row nombresColumnas = hojaCalculo.createRow(0);
+        int contadorFilas = 1;
+        
+        XSSFFont letraEncabezados = libroTrabajo.createFont();
+        letraEncabezados.setFontName("Calibri");
+        letraEncabezados.setFontHeightInPoints((byte) 10);
+        letraEncabezados.setBold(true);
+                
+        CellStyle estiloColumnas = libroTrabajo.createCellStyle();
+        estiloColumnas.setFillForegroundColor(IndexedColors.PALE_BLUE.getIndex());
+        estiloColumnas.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        estiloColumnas.setFont(letraEncabezados);
+        estiloColumnas.setAlignment(HorizontalAlignment.CENTER);
+        
+        CellStyle estiloFilas = libroTrabajo.createCellStyle();
+        XSSFFont letraFilas = libroTrabajo.createFont();
+        letraFilas.setFontName("Calibri");
+        letraFilas.setFontHeightInPoints((byte) 10);
+        estiloFilas.setFont(letraFilas);
+        estiloFilas.setAlignment(HorizontalAlignment.CENTER);
+        
+        CellStyle estiloFilasEspeciales  = libroTrabajo.createCellStyle();
+        estiloFilasEspeciales.setFont(letraFilas);
+        
+        try (Connection dbConnection = datasource.getConnection();
+                PreparedStatement statement = dbConnection.prepareStatement(query)) {
+
+            statement.setString(1, id_escuela);
+            statement.setString(2, desde);
+            statement.setString(3, hasta);
+
+            try (ResultSet resultado = statement.executeQuery()) {
+                ResultSetMetaData metaDatos = resultado.getMetaData();
+                int contadorColumnas = metaDatos.getColumnCount();
+                
+                while (resultado.next()) {
+                    Row fila = hojaCalculo.createRow(contadorFilas++);
+                    for(int indiceColumna = 1; indiceColumna < contadorColumnas; indiceColumna++) {
+                        Cell celda = fila.createCell(indiceColumna-1);
+                        
+                        if (metaDatos.getColumnLabel(indiceColumna).equals("Nombre Alumno")
+                                || metaDatos.getColumnLabel(indiceColumna).equals("Sexo")) {
+                            celda.setCellStyle(estiloFilasEspeciales);
+                        } else {
+                            celda.setCellStyle(estiloFilas);
+                        }
+                        
+                        Object valor = resultado.getObject(indiceColumna);
+                            if (valor instanceof String) {
+                                celda.setCellValue(resultado.getString(indiceColumna));
+                            } else if (valor instanceof Integer) {
+                                celda.setCellValue(resultado.getInt(indiceColumna));
+                            } else {
+                                celda.setCellValue(resultado.getDouble(indiceColumna));
+                            }
+                    }
+                }
+                
+                for(int indiceColumna = 1; indiceColumna < contadorColumnas; indiceColumna++) {
+                    Cell celdaEncabezado = nombresColumnas.createCell(indiceColumna-1);
+                    celdaEncabezado.setCellValue(metaDatos.getColumnLabel(indiceColumna));
+                    celdaEncabezado.setCellStyle(estiloColumnas);                    
+                    hojaCalculo.autoSizeColumn(indiceColumna-1);
+                }
+                
+            } catch (SQLException excepcion) {
+                throw excepcion;
+            }
+        }
+        
+        ByteArrayOutputStream salida = new ByteArrayOutputStream();
+
+        libroTrabajo.write(salida);
+        libroTrabajo.close();
+
+        return salida.toByteArray();
     }
 
     public static JsonObject generarJSONGraficoLinea(String query, String idAlumno, String nombreSerieX, boolean redondear) {

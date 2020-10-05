@@ -378,6 +378,12 @@ public class SISVANWS {
         return Response.ok(respuestaInserccion.toString()).header("Access-Control-Allow-Origin", "*").build();
     }
 
+    /**
+     * 
+     * @param cuerpoPeticion
+     * @return
+     * @throws IOException 
+     */
     @POST
     @Produces("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     @Path("/alumnos/generarExcel")
@@ -419,6 +425,30 @@ public class SISVANWS {
         response.header("Content-Disposition", "attachment; Reporte.xlsx");
         response.header("Access-Control-Allow-Origin", "*");
         return response.build();
+    }
+    
+    /**
+     * 
+     * @param desde
+     * @param hasta
+     * @param id_escuela
+     * @return
+     */
+    @GET
+    @Produces("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    @Path("/escolares/generarExcelGrupal")
+    public Response generarExcelGrupal(@QueryParam("desde") String desde,
+                                       @QueryParam("hasta") String hasta,
+                                       @QueryParam("id_escuela") String id_escuela) {
+        
+        try {
+            ResponseBuilder response = Response.ok(SISVANUtils.generarExcelGrupal(desde, hasta, id_escuela));
+            response.header("Content-Disposition", "attachment; Reporte escolar.xlsx");
+            response.header("Access-Control-Allow-Origin", "*");
+            return response.build();
+        } catch(NamingException | SQLException | IOException excepcion) {
+            return Response.serverError().build();
+        }        
     }
 
     /**
