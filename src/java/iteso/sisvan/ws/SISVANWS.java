@@ -221,6 +221,7 @@ public class SISVANWS {
                 + "VALUES(var_sustitucion)";
         String fecha;
         String id_alumno;
+        String id_grupo;
 
         String[] nombresColumnas = {"id_alumno", "id_grupo", "fecha", "masa", "estatura", "perimetro_cuello", "cintura", "triceps", "subescapula", "pliegue_cuello"};
 
@@ -230,6 +231,7 @@ public class SISVANWS {
             
             fecha = datosEntrada.getString("fecha");
             id_alumno = datosEntrada.getString("id_alumno"); 
+            id_grupo = datosEntrada.getString("id_grupo"); 
             
             if (!datosEntrada.containsKey("perimetro_cuello")) {
                 query = query.replace("perimetro_cuello,", "");
@@ -269,7 +271,7 @@ public class SISVANWS {
         JsonObject respuestaInserccion = SISVANUtils.insertarNuevoDatoEnBD(cuerpoPeticion, nombresColumnas, query);
         
         if(respuestaInserccion.containsKey("status") && respuestaInserccion.getString("status").equals("exito")) {
-            String actualizacionPuntajes = "SELECT actualizar_puntajes(?, ?)";
+            String actualizacionPuntajes = "SELECT actualizar_puntajes(?, ?, ?)";
             DataSource datasource;
             JsonObjectBuilder jsonObjectBuilder
                 = Json.createObjectBuilder();
@@ -287,7 +289,8 @@ public class SISVANWS {
             try (Connection dbConnection = datasource.getConnection();
                     PreparedStatement statement = dbConnection.prepareStatement(actualizacionPuntajes)) {
                 statement.setString(1, id_alumno);
-                statement.setString(2, fecha);
+                statement.setString(2, id_grupo);
+                statement.setString(3, fecha);
                 
                 try(ResultSet resultado = statement.executeQuery()) {
                     if(!resultado.next()) {
@@ -328,6 +331,7 @@ public class SISVANWS {
                 + "WHERE id_alumno = ?";
         String fecha;
         String id_alumno;
+        String id_grupo;
 
         String[] nombresColumnas = {"id_grupo", "fecha", "masa", "estatura", "perimetro_cuello", "cintura", "triceps", "subescapula", "pliegue_cuello", "id_alumno"};
 
@@ -335,13 +339,14 @@ public class SISVANWS {
             JsonObject datosEntrada = bodyReader.readObject();
             
             fecha = datosEntrada.getString("fecha");
-            id_alumno = datosEntrada.getString("id_alumno");            
+            id_alumno = datosEntrada.getString("id_alumno");      
+            id_grupo = datosEntrada.getString("id_grupo");      
         }
         
         JsonObject respuestaInserccion = SISVANUtils.insertarNuevoDatoEnBD(cuerpoPeticion, nombresColumnas, query);
         
         if(respuestaInserccion.containsKey("status") && respuestaInserccion.getString("status").equals("exito")) {
-            String actualizacionPuntajes = "SELECT actualizar_puntajes(?, ?)";
+            String actualizacionPuntajes = "SELECT actualizar_puntajes(?, ?, ?)";
             DataSource datasource;
             JsonObjectBuilder jsonObjectBuilder
                 = Json.createObjectBuilder();
@@ -359,7 +364,8 @@ public class SISVANWS {
             try (Connection dbConnection = datasource.getConnection();
                     PreparedStatement statement = dbConnection.prepareStatement(actualizacionPuntajes)) {
                 statement.setString(1, id_alumno);
-                statement.setString(2, fecha);
+                statement.setString(2, id_grupo);
+                statement.setString(3, fecha);
                 
                 try(ResultSet resultado = statement.executeQuery()) {
                     if(!resultado.next()) {
@@ -927,46 +933,23 @@ public class SISVANWS {
     }
 
     @POST
-    @Produces("application/pdf")
-    @Path("/generarPDF")
-    public Response generarPDF(String contenido) {
-        JsonObject peticionJSON = Json.createReader(new StringReader(contenido)).readObject();        
-        String tipo = peticionJSON.getString("tipo");
+    @Produces("image/png")
+    @Path("/generarImagen")
+    public Response generarImagen(String contenido) {
+        JsonObject peticionJSON = Json.createReader(new StringReader(contenido)).readObject(); 
         int ancho = peticionJSON.getInt("ancho");
         int alto = peticionJSON.getInt("alto");
         String svg = SISVANUtils.prepararSVG(peticionJSON.getString("svg"), ancho, alto);
-        ByteArrayOutputStream streamPDF = new ByteArrayOutputStream();        
         InputStream svgStream = new ByteArrayInputStream(svg.getBytes());
         TranscoderInput imagenSVG = new TranscoderInput(svgStream);
         try (ByteArrayOutputStream streamPNG = new ByteArrayOutputStream()) {
             TranscoderOutput imagenPNG = new TranscoderOutput(streamPNG);
             PNGTranscoder convertidor = new PNGTranscoder();
             convertidor.transcode(imagenSVG, imagenPNG);
-            streamPNG.flush();
-            streamPNG.close();
-            try (PDDocument documento = new PDDocument()) {
-                PDPage pagina = new PDPage();
-                documento.addPage(pagina);
-                try (PDPageContentStream streamContenido = new PDPageContentStream(documento, pagina)) {
-                    PDImageXObject grafica = PDImageXObject.createFromByteArray(documento, streamPNG.toByteArray(), "grafica");
-                    streamContenido.setFont(PDType1Font.HELVETICA_BOLD, 18);
-                    streamContenido.beginText();
-                    streamContenido.newLineAtOffset(160, 670);
-                    streamContenido.showText("Reporte de evaluación por " + tipo);
-                    streamContenido.endText();
-                    streamContenido.drawImage(grafica, 50, 250);
-                    streamContenido.close();
-                    documento.save(streamPDF);
-                } catch (IOException ex) {
-                    return Response.ok("No es posible generar el PDF: " + ex.getMessage()).build();
-                }
-            } catch (IOException ex) {
-                return Response.ok("No es posible generar el PDF: " + ex.getMessage()).build();
-            }
+            streamPNG.flush();            
+            return Response.ok(streamPNG.toByteArray()).header("Access-Control-Allow-Origin", "*").build();
         } catch (Exception ex) {
             return Response.ok("No es posible generar la imagen: " + ex.getMessage()).build();
-        }
-        
-        return Response.ok(streamPDF.toByteArray()).header("Access-Control-Allow-Origin", "*").build();
+        }                
     }       
 }

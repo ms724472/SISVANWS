@@ -120,6 +120,7 @@ DROP function IF EXISTS `actualizar_puntajes`;
 DELIMITER $$
 CREATE FUNCTION `actualizar_puntajes` (
 	alumno INT,
+	grupo INT,
 	fecha_medicion DATE
 )
 RETURNS INT
@@ -130,6 +131,9 @@ BEGIN
     DECLARE imc_alumno DECIMAL(4,2);
     DECLARE peso_alumno DECIMAL(3,1);
 	DECLARE talla_alumno DECIMAL(4,1);
+	
+	UPDATE alumnos SET id_grupo = grupo
+    WHERE id_alumno = alumno;
 	
     SELECT sexo, timestampdiff(MONTH, alumnos.fecha_nac, fecha_medicion) 
     INTO sexo_alumno, meses
