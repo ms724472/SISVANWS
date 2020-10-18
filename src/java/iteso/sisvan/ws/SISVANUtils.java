@@ -106,6 +106,7 @@ public class SISVANUtils {
             } catch (SQLException ex) {
                 jsonObjectBuilder.add("error", "Error al intentar ejecutar la consulta en la base de datos.");
                 jsonObjectBuilder.add("mensaje", ex.getMessage());
+                ex.printStackTrace();
                 response = jsonObjectBuilder.build();
                 return response;
             }

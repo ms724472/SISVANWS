@@ -321,19 +321,18 @@ public class SISVANWS {
     public Response actualizarMedicion(String cuerpoPeticion) {
         String query = "UPDATE datos SET" + "\n"
                 + "id_grupo = ?," + "\n"
-                + "fecha = ?," + "\n"
                 + "masa = ?," + "\n"
                 + "estatura = ?," + "\n"
                 + "perimetro_cuello =?," + "\n"
                 + "cintura = ?, triceps =?," + "\n"
                 + "subescapula = ?," + "\n"
                 + "pliegue_cuello = ?" + "\n"
-                + "WHERE id_alumno = ?";
+                + "WHERE id_alumno = ? AND fecha = ?";
         String fecha;
         String id_alumno;
         String id_grupo;
 
-        String[] nombresColumnas = {"id_grupo", "fecha", "masa", "estatura", "perimetro_cuello", "cintura", "triceps", "subescapula", "pliegue_cuello", "id_alumno"};
+        String[] nombresColumnas = {"id_grupo", "masa", "estatura", "perimetro_cuello", "cintura", "triceps", "subescapula", "pliegue_cuello", "id_alumno", "fecha"};
 
         try (JsonReader bodyReader = Json.createReader(new StringReader(cuerpoPeticion))) {
             JsonObject datosEntrada = bodyReader.readObject();
@@ -698,7 +697,7 @@ public class SISVANWS {
         DataSource datasource;
         String query = "SELECT id_escuela, id_grupo as value, concat(concat(calcular_grado(anio_ingreso, ?), ' '), letra) as label " + "\n"
                        + "FROM grupos " + "\n"
-                       + "WHERE calcular_grado(anio_ingreso, ?) >= 1 AND calcular_grado(anio_ingreso, ?) <= 6";
+                       + "WHERE calcular_grado(anio_ingreso, ?) >= 1 AND calcular_grado(anio_ingreso, ?) <= 6 ORDER BY id_escuela";
         
         //Encontrar la clase para poder realizar la conexión con RDS
         try {
@@ -756,8 +755,11 @@ public class SISVANWS {
     }    
     
     public static void main(String... args) {
-        String test = "SELECT ? FROM ?";
-        System.out.println(test.replaceAll("\\?", ""));
+        String query = "SELECT id_escuela, id_grupo as value, concat(concat(calcular_grado(anio_ingreso, ?), ' '), letra) as label " + "\n"
+                       + "FROM grupos " + "\n"
+                       + "WHERE calcular_grado(anio_ingreso, ?) >= 1 AND calcular_grado(anio_ingreso, ?) <= 6";
+        
+        System.out.println(query.replaceAll("\\?", "CURDATE()"));
     }
 
     /**
