@@ -201,8 +201,8 @@ BEGIN
 		SET diagnostico = "Sin exceso de peso";
 	ELSEIF puntaje_z > 1.0 AND puntaje_z <= 2.0 THEN
 		SET diagnostico = "Sobrepeso";
-	ELSEIF resultado_lms > 2.0 THEN
-		SET puntaje_z = "Obesidad";
+	ELSEIF puntaje_z > 2.0 THEN
+		SET diagnostico = "Obesidad";
 	END IF;
 
 RETURN diagnostico;

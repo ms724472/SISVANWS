@@ -35,7 +35,6 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFClientAnchor;
-import org.apache.poi.xssf.usermodel.XSSFColor;
 import org.apache.poi.xssf.usermodel.XSSFDrawing;
 import org.apache.poi.xssf.usermodel.XSSFFont;
 import org.apache.poi.xssf.usermodel.XSSFPicture;
@@ -106,7 +105,6 @@ public class SISVANUtils {
             } catch (SQLException ex) {
                 jsonObjectBuilder.add("error", "Error al intentar ejecutar la consulta en la base de datos.");
                 jsonObjectBuilder.add("mensaje", ex.getMessage());
-                ex.printStackTrace();
                 response = jsonObjectBuilder.build();
                 return response;
             }
@@ -121,6 +119,7 @@ public class SISVANUtils {
     public static String prepararSVG(String svg, int ancho, int alto) {
         svg = svg.replace("<svg width=\"100%\" height=\"100%\" style=\"position: absolute; left: 0px; top: 0px; padding: inherit;\">", "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" + ancho + "px\" height=\"" + alto + "px\">");
         svg = svg.replace("<svg width=\"100%\" height=\"100%\" style=\"position:absolute;left:0px;top:0px;padding:inherit;\">", "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" + ancho + "px\" height=\"" + alto + "px\">");
+        svg = svg.replace("<svg width=\"100%\" height=\"100%\">", "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" + ancho + "px\" height=\"" + alto + "px\">");
         svg = svg.replace("-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Arial,sans-serif", "Arial");
         svg = svg.replaceFirst("rgba\\([0, ]+\\)", "white");
         svg = svg.replaceAll("g fill=\"rgba\\(0,0,0,0\\)\"", "g fill=\"white\"");

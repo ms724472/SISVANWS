@@ -466,7 +466,10 @@ public class SISVANWS {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/alumnos/buscarPorNombre/{nombre}")
     public Response buscarPorNombre(@PathParam("nombre") String nombre) {
-        String query = "SELECT id_alumno, concat(alumnos.nombre, ' ', apellido_p, ' ', apellido_m) as nombre_completo, escuelas.nombre as nombre_escuela\n"
+        String query = "SELECT id_alumno, concat(alumnos.nombre, ' ', apellido_p, ' ', apellido_m) as nombre_completo, escuelas.nombre as nombre_escuela,\n"
+                + "CONCAT(IF (calcular_grado(grupos.anio_ingreso, CURDATE()) > 6, "  + "\n"
+                + "'EGRESADO', " + "\n"
+                + "calcular_grado(grupos.anio_ingreso, CURDATE())), ' ', grupos.letra) as grupo " + "\n"
                 + "FROM alumnos \n"
                 + "INNER JOIN grupos ON alumnos.id_grupo = grupos.id_grupo \n"
                 + "INNER JOIN escuelas ON grupos.id_escuela = escuelas.id_escuela\n"
