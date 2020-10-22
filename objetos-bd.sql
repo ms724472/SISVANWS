@@ -55,22 +55,49 @@ CREATE TABLE percentiles_oms_imc(
 	id_percentil varchar(25) PRIMARY KEY NOT NULL,
     normalizador float NOT NULL,
     mediana float NOT NULL,
-    coeficiente_variacion float NOT NULL
+    coeficiente_variacion float NOT NULL,
+    sd4_neg float NOT NULL,
+    sd3_neg float NOT NULL,
+    sd2_neg float NOT NULL,
+    sd1_neg float NOT NULL,
+    sd0 float NOT NULL,
+    sd1 float NOT NULL,
+    sd2 float NOT NULL,
+    sd3 float NOT NULL,
+    sd4 float NOT NULL
 ); 
 
 CREATE TABLE percentiles_oms_talla(
 	id_percentil varchar(25) PRIMARY KEY NOT NULL,
     normalizador float NOT NULL,
     mediana float NOT NULL,
-    coeficiente_variacion float NOT NULL
+    coeficiente_variacion float NOT NULL,
+    sd4_neg float NOT NULL,
+    sd3_neg float NOT NULL,
+    sd2_neg float NOT NULL,
+    sd1_neg float NOT NULL,
+    sd0 float NOT NULL,
+    sd1 float NOT NULL,
+    sd2 float NOT NULL,
+    sd3 float NOT NULL,
+    sd4 float NOT NULL
 ); 
 
 CREATE TABLE percentiles_oms_peso(
 	id_percentil varchar(25) PRIMARY KEY NOT NULL,
     normalizador float NOT NULL,
     mediana float NOT NULL,
-    coeficiente_variacion float NOT NULL
-); 	
+    coeficiente_variacion float NOT NULL,
+    sd4_neg float NOT NULL,
+    sd3_neg float NOT NULL,
+    sd2_neg float NOT NULL,
+    sd1_neg float NOT NULL,
+    sd0 float NOT NULL,
+    sd1 float NOT NULL,
+    sd2 float NOT NULL,
+    sd3 float NOT NULL,
+    sd4 float NOT NULL
+); 
 
 DROP function IF EXISTS `obtener_rangos`;
 

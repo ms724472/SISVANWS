@@ -913,14 +913,14 @@ public class SISVANWS {
     @Path("/estadisticas/obtenerPuntajesZMasa/{sexo}")
     public Response obtenerPuntajesZMasa(@PathParam("sexo") String sexo) {
         String query = "SELECT cast(replace(id_percentil, ?, '') as unsigned) as mes, \n"
-                + "nivel_n3, \n"
-                + "nivel_n2, \n"
-                + "nivel_n1, \n"
-                + "nivel_0, \n"
-                + "nivel_p1, \n"
-                + "nivel_p2, \n"
-                + "nivel_p3 FROM \n"
-                + "oms_puntajes_z_masa WHERE id_percentil LIKE('%" + sexo + "%') \n"
+                + "sd3_neg, \n"
+                + "sd2_neg, \n"
+                + "sd1_neg, \n"
+                + "sd0, \n"
+                + "sd1, \n"
+                + "sd2, \n"
+                + "sd3 FROM \n"
+                + "percentiles_oms_peso WHERE id_percentil LIKE('%" + sexo + "%') \n"
                 + "ORDER BY mes";
 
         return Response.ok(SISVANUtils.generarJSONGraficoLinea(query, sexo, "mes", false).toString()).header("Access-Control-Allow-Origin", "*").build();
