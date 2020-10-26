@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import javax.json.Json;
@@ -405,8 +406,9 @@ public class SISVANWS {
         byte[][] resultados = new byte[3][];
         int contadorGrafico = 0;
         for (String grafico : graficos) {
-            InputStream svgStream = new ByteArrayInputStream(grafico.getBytes());
+            InputStream svgStream = new ByteArrayInputStream(grafico.getBytes(StandardCharsets.UTF_8));
             TranscoderInput imagenSVG = new TranscoderInput(svgStream);
+            System.out.println(new String(grafico.getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8));
             try (ByteArrayOutputStream streamPNG = new ByteArrayOutputStream()) {
                 TranscoderOutput imagenPNG = new TranscoderOutput(streamPNG);
                 PNGTranscoder convertidor = new PNGTranscoder();
@@ -587,7 +589,7 @@ public class SISVANWS {
         String query = "SELECT alumnos.nombre," + "\n"
                 + "apellido_p," + "\n"
                 + "apellido_m," + "\n"
-                + "CONCAT(UPPER(SUBSTRING(sexo, 1, 1)), SUBSTRING(sexo, 2)) as sexo," + "\n"
+                + "UPPER(sexo) as sexo," + "\n"
                 + "fecha_nac," + "\n"
                 + "escuelas.nombre as escuela," + "\n"
                 + "escuelas.id_escuela," + "\n"
@@ -758,74 +760,83 @@ public class SISVANWS {
     }    
     
     public static void main(String... args) {
-        String query = "SELECT id_escuela, id_grupo as value, concat(concat(calcular_grado(anio_ingreso, ?), ' '), letra) as label " + "\n"
-                       + "FROM grupos " + "\n"
-                       + "WHERE calcular_grado(anio_ingreso, ?) >= 1 AND calcular_grado(anio_ingreso, ?) <= 6";
-        
-        System.out.println(query.replaceAll("\\?", "CURDATE()"));
-    }
-
-    /**
-     * Obtener el historico de la estatura del alumno
-     *
-     * @param idAlumno identificador unico del alumno
-     * @return json con toda la informacion de la base de datos
-     */
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    @Path("/alumnos/obtenerHistoricoEstatura/{idAlumno}")
-    public Response obtenerHistoricoEstatura(@PathParam("idAlumno") String idAlumno) {
-        String query = "SELECT date_format(fecha, '%d/%m/%Y') as fecha, "
-                + "estatura as talla, "
-                + "mediana as ideal "
-                + "FROM datos" + "\n"
-                + "INNER JOIN alumnos ON alumnos.id_alumno = datos.id_alumno" + "\n"
-                + "INNER JOIN percentiles_oms_talla ON id_percentil = concat(alumnos.sexo,timestampdiff(MONTH, alumnos.fecha_nac, datos.fecha))" + "\n"
-                + "WHERE datos.id_alumno = ?";
-
-        return Response.ok(SISVANUtils.generarJSONGraficoLinea(query, idAlumno, "fecha", true).toString()).header("Access-Control-Allow-Origin", "*").build();
-    }
-
-    /**
-     * Obtener el historico de la peso del alumno
-     *
-     * @param idAlumno identificador unico del alumno
-     * @return json con toda la informacion de la base de datos
-     */
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    @Path("/alumnos/obtenerHistoricoMasa/{idAlumno}")
-    public Response obtenerHistoricoMasa(@PathParam("idAlumno") String idAlumno) {
-        String query = "SELECT date_format(fecha, '%d/%m/%Y') as fecha, "
-                + "masa as peso, "
-                + "mediana as ideal "
-                + "FROM datos" + "\n"
-                + "INNER JOIN alumnos ON alumnos.id_alumno = datos.id_alumno" + "\n"
-                + "INNER JOIN percentiles_oms_peso ON id_percentil = concat(alumnos.sexo,timestampdiff(MONTH, alumnos.fecha_nac, datos.fecha))" + "\n"
-                + "WHERE datos.id_alumno = ?";
-
-        return Response.ok(SISVANUtils.generarJSONGraficoLinea(query, idAlumno, "fecha", true).toString()).header("Access-Control-Allow-Origin", "*").build();
+        System.out.println("masa as peso".split("as ")[1]);
     }
     
     /**
      * Obtener el historico de la imc del alumno
      *
-     * @param idAlumno identificador unico del alumno
+     * @param tipo este parametro es para especificar
+     * el tipo de historico.
+     * @param idAlumno identificador unico del alumno.
      * @return json con toda la informacion de la base de datos
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    @Path("/alumnos/obtenerHistoricoIMC/{idAlumno}")
-    public Response obtenerHistoricoIMC(@PathParam("idAlumno") String idAlumno) {
-        String query = "SELECT date_format(fecha, '%d/%m/%Y') as fecha, "
-                + "imc, "
-                + "mediana as ideal "
-                + "FROM datos" + "\n"
-                + "INNER JOIN alumnos ON alumnos.id_alumno = datos.id_alumno" + "\n"
-                + "INNER JOIN percentiles_oms_imc ON id_percentil = concat(alumnos.sexo,timestampdiff(MONTH, alumnos.fecha_nac, datos.fecha))" + "\n"
-                + "WHERE datos.id_alumno = ?";
+    @Path("/alumnos/obtenerHistorico/{tipo}/{idAlumno}")
+    public Response obtenerHistorico(@PathParam("tipo") String tipo, @PathParam("idAlumno") String idAlumno) {
+        String tabla;
+        String columna;
+        switch(tipo) {
+            case "talla":
+                tabla = "percentiles_oms_talla";
+                columna = "estatura as talla";
+                break;
+            case "imc":
+                tabla = "percentiles_oms_imc";
+                columna = "imc";
+                break;
+            default:
+                tabla = "percentiles_oms_peso";
+                columna = "masa as peso";
+                break;
+        }
+        
+        String query = "SELECT CONVERT(meses, UNSIGNED INTEGER) meses_num, \n" 
+                    + "       sd3, \n" 
+                    + "       sd2, \n" 
+                    + "       sd1, \n" 
+                    + "       sd0, \n" 
+                    + "       sd1_neg, \n" 
+                    + "       sd2_neg, \n" 
+                    + "       sd3_neg, \n" 
+                    + "       " + (columna.contains("as") ? columna.split("as ")[1] : columna) + " \n" 
+                    + "FROM   (SELECT REPLACE(id_percentil, sexo, '') AS meses, \n" 
+                    + "               sd3, \n" 
+                    + "               sd2, \n" 
+                    + "               sd1, \n" 
+                    + "               sd0, \n" 
+                    + "               sd1_neg, \n" 
+                    + "               sd2_neg, \n" 
+                    + "               sd3_neg, \n" 
+                    + "               " + columna + " \n" 
+                    + "        FROM   datos \n" 
+                    + "               INNER JOIN alumnos \n" 
+                    + "                       ON alumnos.id_alumno = datos.id_alumno \n" 
+                    + "               INNER JOIN " + tabla + " \n" 
+                    + "                       ON id_percentil = Concat(alumnos.sexo, \n" 
+                    + "                                         Timestampdiff(month, \n" 
+                    + "                                         alumnos.fecha_nac, \n" 
+                    + "                                         datos.fecha)) \n" 
+                    + "        WHERE  datos.id_alumno = ? \n" 
+                    + "        UNION \n" 
+                    + "        SELECT REPLACE(id_percentil, sexo, '') AS meses, \n" 
+                    + "               sd3, \n" 
+                    + "               sd2, \n" 
+                    + "               sd1, \n" 
+                    + "               sd0, \n" 
+                    + "               sd1_neg, \n" 
+                    + "               sd2_neg, \n" 
+                    + "               sd3_neg, \n" 
+                    + "               NULL AS " + (columna.contains("as") ? columna.split("as ")[1] : columna) + " \n" 
+                    + "        FROM   " + tabla + " \n" 
+                    + "               INNER JOIN alumnos \n" 
+                    + "                       ON id_percentil LIKE Concat(sexo, '%') \n" 
+                    + "        WHERE  id_alumno = ?) AS estadisticas \n" 
+                    + "GROUP  BY meses \n" 
+                    + "ORDER  BY meses_num ASC";
 
-        return Response.ok(SISVANUtils.generarJSONGraficoLinea(query, idAlumno, "fecha", true).toString()).header("Access-Control-Allow-Origin", "*").build();
+        return Response.ok(SISVANUtils.generarJSONGraficoLinea(query, idAlumno, "mes", false).toString()).header("Access-Control-Allow-Origin", "*").build();
     }
 
     /**
@@ -906,21 +917,36 @@ public class SISVANWS {
      * Obtener los puntajes Z de la masa proporcionados por la OMS
      *
      * @param sexo el sexo requerido para obtener los puntajes
+     * @param tipo el tipo de indice z para obtener puntajes
      * @return json para generar la grafica de linea
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    @Path("/estadisticas/obtenerPuntajesZMasa/{sexo}")
-    public Response obtenerPuntajesZMasa(@PathParam("sexo") String sexo) {
+    @Path("/estadisticas/obtenerPuntajesZ/{tipo}/{sexo}")
+    public Response obtenerPuntajesZ(@PathParam("tipo") String tipo, @PathParam("sexo") String sexo) {
+        String tipoIndice;
+        
+        switch(tipo) {
+            case "talla":
+                tipoIndice = "percentiles_oms_talla";
+                break;
+            case "imc":
+                tipoIndice = "percentiles_oms_imc";
+                break;
+            default:
+                tipoIndice = "percentiles_oms_peso";
+                break;
+        }
+        
         String query = "SELECT cast(replace(id_percentil, ?, '') as unsigned) as mes, \n"
-                + "sd3_neg, \n"
-                + "sd2_neg, \n"
-                + "sd1_neg, \n"
-                + "sd0, \n"
-                + "sd1, \n"
+                + "sd3, \n"
                 + "sd2, \n"
-                + "sd3 FROM \n"
-                + "percentiles_oms_peso WHERE id_percentil LIKE('%" + sexo + "%') \n"
+                + "sd1, \n"
+                + "sd0, \n"
+                + "sd1_neg, \n"
+                + "sd2_neg, \n"
+                + "sd3_neg FROM \n"
+                + tipoIndice + " WHERE id_percentil LIKE('%" + sexo + "%') \n"
                 + "ORDER BY mes";
 
         return Response.ok(SISVANUtils.generarJSONGraficoLinea(query, sexo, "mes", false).toString()).header("Access-Control-Allow-Origin", "*").build();

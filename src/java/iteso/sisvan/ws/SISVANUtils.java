@@ -16,6 +16,10 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
@@ -25,8 +29,10 @@ import static javax.json.JsonValue.ValueType.NUMBER;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.sql.DataSource;
+import org.apache.commons.codec.binary.StringUtils;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.ClientAnchor;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.HorizontalAlignment;
 import org.apache.poi.ss.usermodel.IgnoredErrorType;
@@ -34,6 +40,7 @@ import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.util.Units;
 import org.apache.poi.xssf.usermodel.XSSFClientAnchor;
 import org.apache.poi.xssf.usermodel.XSSFDrawing;
 import org.apache.poi.xssf.usermodel.XSSFFont;
@@ -122,6 +129,7 @@ public class SISVANUtils {
         svg = svg.replace("<svg width=\"100%\" height=\"100%\">", "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" + ancho + "px\" height=\"" + alto + "px\">");
         svg = svg.replace("-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Arial,sans-serif", "Arial");
         svg = svg.replaceFirst("rgba\\([0, ]+\\)", "white");
+        svg = svg.replaceAll("<circle", "<circle r=\"0\"");
         svg = svg.replaceAll("g fill=\"rgba\\(0,0,0,0\\)\"", "g fill=\"white\"");
         while (svg.indexOf("rgba") > 0) {
             String aux = svg.substring(svg.indexOf("rgba"));
@@ -134,8 +142,9 @@ public class SISVANUtils {
     }
     
     public static void main(String... args) {
-        String test = "<svg width=\"100%\" height=\"100%\" style=\"position:absolute;left:0px;top:0px;padding:inherit;\"><defs><clipPath id=\"chart1000267490887$cp0\"><rect x=\"0\" y=\"0\" width=\"343\" height=\"244\"></rect></clipPath></defs><g cursor=\"default\" font-family=\"-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Arial,sans-serif\" font-size=\"12px\" font-weight=\"400\"><g cursor=\"default\"><g><rect width=\"387.109\" height=\"350\" fill=\"rgba(0,0,0,0)\"></rect><g transform=\"matrix(1,0,0,1,158,8)\"><g><rect width=\"95\" height=\"22\" fill=\"rgba(0,0,0,0)\"></rect><g><g><text dominant-baseline=\"text-before-edge\" fill=\"rgba(0, 0, 0, 0.8)\" x=\"20\" y=\"3\">imc</text><g><line x1=\"3\" y1=\"11\" x2=\"13\" y2=\"11\" stroke=\"rgb(35, 123, 177)\" stroke-width=\"2\" shape-rendering=\"crispEdges\"></line><path d=\"M5,8H11V14H5Z\" fill=\"rgb(35, 123, 177)\" shape-rendering=\"crispEdges\"></path></g><rect x=\"1\" y=\"1\" width=\"40\" height=\"20\" fill=\"rgba(0,0,0,0)\"></rect><text dominant-baseline=\"text-before-edge\" fill=\"rgba(0, 0, 0, 0.8)\" x=\"66\" y=\"3\">ideal</text><g><line x1=\"49\" y1=\"11\" x2=\"59\" y2=\"11\" stroke=\"#006600\" stroke-width=\"2\" shape-rendering=\"crispEdges\"></line><path d=\"M51,8H57V14H51Z\" fill=\"#006600\" shape-rendering=\"crispEdges\"></path></g><rect x=\"47\" y=\"1\" width=\"47\" height=\"20\" fill=\"rgba(0,0,0,0)\"></rect></g></g></g></g><g transform=\"matrix(1,0,0,1,10,47)\"><text dominant-baseline=\"middle\" x=\"12.9375\" y=\"244\" text-anchor=\"end\" fill=\"rgba(0, 0, 0, 0.8)\">0</text><text dominant-baseline=\"middle\" x=\"12.9375\" y=\"203.33333333333334\" text-anchor=\"end\" fill=\"rgba(0, 0, 0, 0.8)\">3</text><text dominant-baseline=\"middle\" x=\"12.9375\" y=\"162.66666666666669\" text-anchor=\"end\" fill=\"rgba(0, 0, 0, 0.8)\">6</text><text dominant-baseline=\"middle\" x=\"12.9375\" y=\"122\" text-anchor=\"end\" fill=\"rgba(0, 0, 0, 0.8)\">9</text><text dominant-baseline=\"middle\" x=\"12.9375\" y=\"81.33333333333334\" text-anchor=\"end\" fill=\"rgba(0, 0, 0, 0.8)\">12</text><text dominant-baseline=\"middle\" x=\"12.9375\" y=\"40.66666666666666\" text-anchor=\"end\" fill=\"rgba(0, 0, 0, 0.8)\">15</text><text dominant-baseline=\"middle\" text-anchor=\"end\" fill=\"rgba(0, 0, 0, 0.8)\" x=\"12.9375\">18</text></g><g transform=\"matrix(1,0,0,1,33.9375,301)\"><g><text dominant-baseline=\"text-before-edge\" fill=\"rgba(0, 0, 0, 0.55)\" font-size=\"14px\" text-anchor=\"middle\" x=\"171.53125\" y=\"22\">Historico IMC</text></g><text dominant-baseline=\"text-before-edge\" x=\"171.53125\" text-anchor=\"middle\" fill=\"rgba(0, 0, 0, 0.8)\">21/04/2015</text></g><g transform=\"matrix(1,0,0,1,34,47)\"><rect width=\"343\" height=\"244\" fill=\"rgba(0,0,0,0)\"></rect><g></g><line y1=\"244\" x2=\"343\" y2=\"244\" shape-rendering=\"crispEdges\" stroke=\"rgba(78,82,86,0.4)\" pointer-events=\"none\"></line><path d=\"M0,203.3H343M0,162.7H343M0,122H343M0,81.3H343M0,40.7H343M0,0H343\" shape-rendering=\"crispEdges\" stroke=\"rgba(196,206,215,0.4)\" pointer-events=\"none\"></path><g clip-path=\"url(#chart1000267490887$cp0)\"><g><polyline points=\"171.5 54.2\" fill=\"none\" stroke=\"rgb(35, 123, 177)\" stroke-width=\"3\"></polyline></g><g><polyline points=\"171.5 40.7\" fill=\"none\" stroke=\"#006600\" stroke-width=\"3\"></polyline></g></g><path d=\"M0,244H343\" shape-rendering=\"crispEdges\" stroke=\"#9E9E9E\" pointer-events=\"none\"></path><g fill=\"rgba(0,0,0,0)\"><path d=\"M167,49H177V59H167Z\" fill=\"rgb(35, 123, 177)\" stroke=\"#FFFFFF\" stroke-width=\"1.25\"></path></g><g fill=\"rgba(0,0,0,0)\"><path d=\"M167,36H177V46H167Z\" fill=\"#006600\" stroke=\"#FFFFFF\" stroke-width=\"1.25\"></path></g></g></g></g></g></svg>";
-        System.out.println(test.replaceAll("g fill=\"rgba\\(0,0,0,0\\)\"", "g fill=\"white\""));
+        int contador = 0;
+        int test = contador++;
+        System.out.println(contador + " " + test);
     }
 
     public static byte[] generarExcelConJSON(JsonObject jsonEntrada, byte[][] graficos) {
@@ -145,202 +154,205 @@ public class SISVANUtils {
         String nombreCompleto = jsonEntrada.getJsonArray("datos").getJsonObject(0).getString("nombre") + " "
                 + jsonEntrada.getJsonArray("datos").getJsonObject(0).getString("apellido_p") + " "
                 + jsonEntrada.getJsonArray("datos").getJsonObject(0).getString("apellido_m");
+        Map<String, String> nombresColumnas = new HashMap<>();
+        nombresColumnas.put("masa", "Peso");
+        nombresColumnas.put("diagnostico_peso", "DxPeso");
+        nombresColumnas.put("z_peso", "zPeso");
+        nombresColumnas.put("estatura", "Talla");
+        nombresColumnas.put("diagnostico_talla", "DxTalla");
+        nombresColumnas.put("z_talla", "zTalla");
+        nombresColumnas.put("imc", "IMC");
+        nombresColumnas.put("diagnostico_imc", "DxIMC");
+        nombresColumnas.put("z_imc", "zIMC");
+        nombresColumnas.put("subescapula", "Subescapular");
+        
+        try (XSSFWorkbook libroTrabajo = new XSSFWorkbook()) {
+            XSSFSheet hojaCalculo = libroTrabajo.createSheet(idAlumno);
+            int contadorFilas = 10;
 
-        XSSFWorkbook libroTrabajo = new XSSFWorkbook();
-        XSSFSheet hojaCalculo = libroTrabajo.createSheet(idAlumno);
-        int contadorFilas = 10;
+            Row titulo = hojaCalculo.createRow(0);
+            Row subTitulo = hojaCalculo.createRow(1);
+            Row nombre = hojaCalculo.createRow(2);
+            Row sexo = hojaCalculo.createRow(3);
+            Row fechaNac = hojaCalculo.createRow(4);
+            Row escuela = hojaCalculo.createRow(5);
+            Row grado = hojaCalculo.createRow(6);
+            Row grupo = hojaCalculo.createRow(7);
+            Row encabezados = hojaCalculo.createRow(9);
 
-        Row titulo = hojaCalculo.createRow(0);
-        Row subTitulo = hojaCalculo.createRow(1);
-        Row nombre = hojaCalculo.createRow(2);
-        Row sexo = hojaCalculo.createRow(3);
-        Row fechaNac = hojaCalculo.createRow(4);
-        Row escuela = hojaCalculo.createRow(5);
-        Row grado = hojaCalculo.createRow(6);
-        Row grupo = hojaCalculo.createRow(7);
-        Row encabezados = hojaCalculo.createRow(9);
+            hojaCalculo.setDisplayGridlines(false);
 
-        hojaCalculo.setDisplayGridlines(false);
+            CellStyle estiloTitulo = libroTrabajo.createCellStyle();
+            CellStyle estiloSubTitulo = libroTrabajo.createCellStyle();
 
-        CellStyle estiloTitulo = libroTrabajo.createCellStyle();
-        CellStyle estiloSubTitulo = libroTrabajo.createCellStyle();
+            CellStyle estiloEncabezados = libroTrabajo.createCellStyle();
+            estiloEncabezados.setFillForegroundColor(IndexedColors.PALE_BLUE.getIndex());
+            estiloEncabezados.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
-        CellStyle estiloEncabezados = libroTrabajo.createCellStyle();
-        estiloEncabezados.setFillForegroundColor(IndexedColors.PALE_BLUE.getIndex());
-        estiloEncabezados.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            CellStyle estiloFilasPares = libroTrabajo.createCellStyle();
 
-        CellStyle estiloFilasPares = libroTrabajo.createCellStyle();
+            CellStyle estiloFilasNones = libroTrabajo.createCellStyle();
+            estiloFilasNones.setFillBackgroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+            estiloFilasNones.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
-        CellStyle estiloFilasNones = libroTrabajo.createCellStyle();
-        estiloFilasNones.setFillBackgroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
-        estiloFilasNones.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            CellStyle estiloNombresDatos = libroTrabajo.createCellStyle();
 
-        CellStyle estiloNombresDatos = libroTrabajo.createCellStyle();
+            XSSFFont letraTitulo = libroTrabajo.createFont();
+            letraTitulo.setFontName("Calibri");
+            letraTitulo.setFontHeightInPoints((short) 16);
+            letraTitulo.setBold(true);
+            estiloTitulo.setFont(letraTitulo);
 
-        XSSFFont letraTitulo = libroTrabajo.createFont();
-        letraTitulo.setFontName("Calibri");
-        letraTitulo.setFontHeightInPoints((short) 16);
-        letraTitulo.setBold(true);
-        estiloTitulo.setFont(letraTitulo);
+            XSSFFont letraSubTitulo = libroTrabajo.createFont();
+            letraSubTitulo.setFontName("Calibri");
+            letraSubTitulo.setFontHeightInPoints((short) 12);
+            estiloSubTitulo.setFont(letraSubTitulo);
 
-        XSSFFont letraSubTitulo = libroTrabajo.createFont();
-        letraSubTitulo.setFontName("Calibri");
-        letraSubTitulo.setFontHeightInPoints((short) 12);
-        estiloSubTitulo.setFont(letraSubTitulo);
+            Cell celdaTitulo = titulo.createCell(1);
+            CellRangeAddress rangoTitulo = new CellRangeAddress(titulo.getRowNum(), titulo.getRowNum(), celdaTitulo.getColumnIndex(), celdaTitulo.getColumnIndex() + 5);
+            hojaCalculo.addMergedRegion(rangoTitulo);
+            celdaTitulo.setCellStyle(estiloTitulo);
+            celdaTitulo.setCellValue(tituloReporte);
 
-        Cell celdaTitulo = titulo.createCell(1);
-        CellRangeAddress rangoTitulo = new CellRangeAddress(titulo.getRowNum(), titulo.getRowNum(), celdaTitulo.getColumnIndex(), celdaTitulo.getColumnIndex() + 5);
-        hojaCalculo.addMergedRegion(rangoTitulo);
-        celdaTitulo.setCellStyle(estiloTitulo);
-        celdaTitulo.setCellValue(tituloReporte);
+            Cell celdaSubTitulo = subTitulo.createCell(1);
+            CellRangeAddress rangoSubTitulo = new CellRangeAddress(subTitulo.getRowNum(), subTitulo.getRowNum(),
+                    celdaSubTitulo.getColumnIndex(), celdaSubTitulo.getColumnIndex() + 5);
+            hojaCalculo.addMergedRegion(rangoSubTitulo);
+            celdaSubTitulo.setCellStyle(estiloSubTitulo);
+            celdaSubTitulo.setCellValue(subTituloReporte);
 
-        Cell celdaSubTitulo = subTitulo.createCell(1);
-        CellRangeAddress rangoSubTitulo = new CellRangeAddress(subTitulo.getRowNum(), subTitulo.getRowNum(),
-                celdaSubTitulo.getColumnIndex(), celdaSubTitulo.getColumnIndex() + 5);
-        hojaCalculo.addMergedRegion(rangoSubTitulo);
-        celdaSubTitulo.setCellStyle(estiloSubTitulo);
-        celdaSubTitulo.setCellValue(subTituloReporte);
+            XSSFFont letraEncabezados = libroTrabajo.createFont();
+            letraEncabezados.setFontName("Calibri");
+            letraEncabezados.setFontHeightInPoints((byte) 10);
+            letraEncabezados.setBold(true);
+            estiloEncabezados.setFont(letraEncabezados);
 
-        XSSFFont letraEncabezados = libroTrabajo.createFont();
-        letraEncabezados.setFontName("Calibri");
-        letraEncabezados.setFontHeightInPoints((byte) 10);
-        letraEncabezados.setBold(true);
-        estiloEncabezados.setFont(letraEncabezados);
+            XSSFFont letraFilas = libroTrabajo.createFont();
+            letraFilas.setFontName("Calibri");
+            letraFilas.setFontHeightInPoints((byte) 10);
+            estiloFilasPares.setFont(letraFilas);
+            estiloFilasNones.setFont(letraFilas);
 
-        XSSFFont letraFilas = libroTrabajo.createFont();
-        letraFilas.setFontName("Calibri");
-        letraFilas.setFontHeightInPoints((byte) 10);
-        estiloFilasPares.setFont(letraFilas);
-        estiloFilasNones.setFont(letraFilas);
+            XSSFFont letraDatosPrincipales = libroTrabajo.createFont();
+            letraDatosPrincipales.setFontName("Calibri");
+            letraDatosPrincipales.setFontHeightInPoints((byte) 10);
+            letraDatosPrincipales.setBold(true);
+            estiloNombresDatos.setFont(letraDatosPrincipales);
 
-        XSSFFont letraDatosPrincipales = libroTrabajo.createFont();
-        letraDatosPrincipales.setFontName("Calibri");
-        letraDatosPrincipales.setFontHeightInPoints((byte) 10);
-        letraDatosPrincipales.setBold(true);
-        estiloNombresDatos.setFont(letraDatosPrincipales);
+            Cell celdaNombre = nombre.createCell(0);
+            celdaNombre.setCellStyle(estiloNombresDatos);
+            celdaNombre.setCellValue("Nombre completo:");
 
-        Cell celdaNombre = nombre.createCell(0);
-        celdaNombre.setCellStyle(estiloNombresDatos);
-        celdaNombre.setCellValue("Nombre completo:");
+            Cell celdaDatoNombre = nombre.createCell(1);
+            celdaDatoNombre.setCellStyle(estiloFilasPares);
+            celdaDatoNombre.setCellValue(nombreCompleto);
 
-        Cell celdaDatoNombre = nombre.createCell(1);
-        celdaDatoNombre.setCellStyle(estiloFilasPares);
-        celdaDatoNombre.setCellValue(nombreCompleto);
+            Cell celdaSexo = sexo.createCell(0);
+            celdaSexo.setCellStyle(estiloNombresDatos);
+            celdaSexo.setCellValue("Sexo:");
 
-        Cell celdaSexo = sexo.createCell(0);
-        celdaSexo.setCellStyle(estiloNombresDatos);
-        celdaSexo.setCellValue("Sexo:");
+            Cell celdaDatoSexo = sexo.createCell(1);
+            celdaDatoSexo.setCellStyle(estiloFilasPares);
+            celdaDatoSexo.setCellValue(jsonEntrada.getJsonArray("datos").getJsonObject(0).getString("sexo"));
 
-        Cell celdaDatoSexo = sexo.createCell(1);
-        celdaDatoSexo.setCellStyle(estiloFilasPares);
-        celdaDatoSexo.setCellValue(jsonEntrada.getJsonArray("datos").getJsonObject(0).getString("sexo"));
+            Cell celdaFechaNac = fechaNac.createCell(0);
+            celdaFechaNac.setCellStyle(estiloNombresDatos);
+            celdaFechaNac.setCellValue("Fecha de nacimiento:");
 
-        Cell celdaFechaNac = fechaNac.createCell(0);
-        celdaFechaNac.setCellStyle(estiloNombresDatos);
-        celdaFechaNac.setCellValue("Fecha de nacimiento:");
+            Cell celdaDatoFechaNac = fechaNac.createCell(1);
+            celdaDatoFechaNac.setCellStyle(estiloFilasPares);
+            celdaDatoFechaNac.setCellValue(jsonEntrada.getJsonArray("datos").getJsonObject(0).getString("fecha_nac"));
 
-        Cell celdaDatoFechaNac = fechaNac.createCell(1);
-        celdaDatoFechaNac.setCellStyle(estiloFilasPares);
-        celdaDatoFechaNac.setCellValue(jsonEntrada.getJsonArray("datos").getJsonObject(0).getString("fecha_nac"));
+            Cell celdaEscuela = escuela.createCell(0);
+            celdaEscuela.setCellStyle(estiloNombresDatos);
+            celdaEscuela.setCellValue("Escuela:");
 
-        Cell celdaEscuela = escuela.createCell(0);
-        celdaEscuela.setCellStyle(estiloNombresDatos);
-        celdaEscuela.setCellValue("Escuela:");
+            Cell celdaDatoEscuela = escuela.createCell(1);
+            celdaDatoEscuela.setCellStyle(estiloFilasPares);
+            celdaDatoEscuela.setCellValue(jsonEntrada.getJsonArray("datos").getJsonObject(0).getString("escuela"));
 
-        Cell celdaDatoEscuela = escuela.createCell(1);
-        celdaDatoEscuela.setCellStyle(estiloFilasPares);
-        celdaDatoEscuela.setCellValue(jsonEntrada.getJsonArray("datos").getJsonObject(0).getString("escuela"));
+            Cell celdaGrado = grado.createCell(0);
+            celdaGrado.setCellStyle(estiloNombresDatos);
+            celdaGrado.setCellValue("Grado:");
 
-        Cell celdaGrado = grado.createCell(0);
-        celdaGrado.setCellStyle(estiloNombresDatos);
-        celdaGrado.setCellValue("Grado:");
+            Cell celdaDatoGrado = grado.createCell(1);
+            celdaDatoGrado.setCellStyle(estiloFilasPares);
+            celdaDatoGrado.setCellValue(jsonEntrada.getJsonArray("datos").getJsonObject(0).getString("grado"));
 
-        Cell celdaDatoGrado = grado.createCell(1);
-        celdaDatoGrado.setCellStyle(estiloFilasPares);
-        celdaDatoGrado.setCellValue(jsonEntrada.getJsonArray("datos").getJsonObject(0).getString("grado"));
+            Cell celdaGrupo = grupo.createCell(0);
+            celdaGrupo.setCellStyle(estiloNombresDatos);
+            celdaGrupo.setCellValue("Grupo:");
 
-        Cell celdaGrupo = grupo.createCell(0);
-        celdaGrupo.setCellStyle(estiloNombresDatos);
-        celdaGrupo.setCellValue("Grupo:");
+            Cell celdaDatoGrupo = grupo.createCell(1);
+            celdaDatoGrupo.setCellStyle(estiloFilasPares);
+            celdaDatoGrupo.setCellValue(jsonEntrada.getJsonArray("datos").getJsonObject(0).getString("letra"));
 
-        Cell celdaDatoGrupo = grupo.createCell(1);
-        celdaDatoGrupo.setCellStyle(estiloFilasPares);
-        celdaDatoGrupo.setCellValue(jsonEntrada.getJsonArray("datos").getJsonObject(0).getString("letra"));
+            for (int indice = 0; indice < jsonEntrada.getJsonArray("mediciones").size(); indice++) {
+                JsonObject fila = jsonEntrada.getJsonArray("mediciones").getJsonObject(indice);
+                Row filaExcel = hojaCalculo.createRow(contadorFilas++);
 
-        for (int indice = 0; indice < jsonEntrada.getJsonArray("mediciones").size(); indice++) {
-            JsonObject fila = jsonEntrada.getJsonArray("mediciones").getJsonObject(indice);
-            Row filaExcel = hojaCalculo.createRow(contadorFilas++);
+                int contadorCelda = 3;
 
-            int contadorCelda = 0;
+                for (Object actual : fila.keySet()) {
+                    String columna = actual.toString();
+                    if (columna.equals("id_alumno") || columna.equals("id_grupo")) {
+                        continue;
+                    }
+                    
+                    int indiceColumna = columna.equals("fecha") ? 0 
+                            : columna.equals("meses") ? 1 
+                            : columna.equals("grupo") ? 2 
+                            : contadorCelda++;
+                    
+                    if (indice == jsonEntrada.getJsonArray("mediciones").size() - 1) {
+                        Cell celdaEncabezado = encabezados.createCell(indiceColumna);
+                        celdaEncabezado.setCellValue(nombresColumnas.containsKey(columna) ? 
+                                nombresColumnas.get(columna) : normalizarColumna(columna));
+                        celdaEncabezado.setCellStyle(estiloEncabezados);
+                        hojaCalculo.autoSizeColumn(indiceColumna);
+                    }
 
-            for (Object actual : fila.keySet()) {
-                String columna = actual.toString();
-                if (columna.equals("id_alumno")) {
-                    continue;
+                    Cell celda = filaExcel.createCell(indiceColumna);
+                    celda.setCellStyle(estiloFilasPares);
+                    if (fila.get(columna).getValueType() == NUMBER) {
+                        celda.setCellValue((columna.equals("meses") ? 
+                                String.valueOf(fila.getJsonNumber(columna).intValue()) : 
+                                fila.getJsonNumber(columna).toString()));
+                    } else {
+                        celda.setCellValue(fila.getString(columna));
+                    }
                 }
-                if (indice == jsonEntrada.getJsonArray("mediciones").size() - 1) {
-                    Cell celdaEncabezado = encabezados.createCell(contadorCelda);
-                    celdaEncabezado.setCellValue(columna);
-                    celdaEncabezado.setCellStyle(estiloEncabezados);
-                    hojaCalculo.autoSizeColumn(contadorCelda);
-                }
-
-                Cell celda = filaExcel.createCell(contadorCelda++);
-                celda.setCellStyle(estiloFilasPares);
-                if(fila.get(columna).getValueType() == NUMBER) {
-                    celda.setCellValue(fila.getJsonNumber(columna).toString());
-                } else {
-                    celda.setCellValue(fila.getString(columna));
-                }                
             }
 
-        }
-        
-        //Se inserta el grafico de IMC
-        int idGraficoIMC = libroTrabajo.addPicture(graficos[0], Workbook.PICTURE_TYPE_PNG);
-        
-        XSSFDrawing fondoIMC = hojaCalculo.createDrawingPatriarch();
-        XSSFClientAnchor posicionadorIMC = new XSSFClientAnchor();
-        
-        posicionadorIMC.setCol1(0);
-        posicionadorIMC.setRow1(contadorFilas+1);
-        posicionadorIMC.setDx2(1210000);
-        posicionadorIMC.setDy2(2090000);
-        
-        XSSFPicture  graficoIMC = fondoIMC.createPicture(posicionadorIMC, idGraficoIMC);
-        graficoIMC.resize(1.5);
-        
-        //Se inserta el grafico de Talla
-        int idGraficoTalla = libroTrabajo.addPicture(graficos[1], Workbook.PICTURE_TYPE_PNG);
-        
-        XSSFDrawing fondoTalla = hojaCalculo.createDrawingPatriarch();
-        XSSFClientAnchor posicionadorTalla = new XSSFClientAnchor();
-        
-        posicionadorTalla.setCol1(5);
-        posicionadorTalla.setRow1(contadorFilas+1);
-        posicionadorTalla.setDx2(1450000);
-        posicionadorTalla.setDy2(2090000);
-        
-        XSSFPicture  graficoTalla = fondoTalla.createPicture(posicionadorTalla, idGraficoTalla);
-        graficoTalla.resize(1.5);
-        
-        //Se inserta el grafico de Talla
-        int idGraficoPeso = libroTrabajo.addPicture(graficos[2], Workbook.PICTURE_TYPE_PNG);
-        
-        XSSFDrawing fondoPeso = hojaCalculo.createDrawingPatriarch();
-        XSSFClientAnchor posicionadorPeso = new XSSFClientAnchor();
-        
-        posicionadorPeso.setCol1(11);
-        posicionadorPeso.setRow1(contadorFilas+1);
-        posicionadorPeso.setDx2(2000000);
-        posicionadorPeso.setDy2(2090000);
-        
-        XSSFPicture  graficoPeso = fondoPeso.createPicture(posicionadorPeso, idGraficoPeso);
-        graficoPeso.resize(1.5);
-        
-        hojaCalculo.addIgnoredErrors(new CellRangeAddress(0, 15, 0, 10), IgnoredErrorType.NUMBER_STORED_AS_TEXT);
+            //Se inserta el grafico de IMC
+            int idGraficoIMC = libroTrabajo.addPicture(graficos[0], Workbook.PICTURE_TYPE_PNG);
 
-        try {
+            XSSFDrawing fondoIMC = hojaCalculo.createDrawingPatriarch();
+            XSSFClientAnchor posicionadorIMC = new SujetadorGraficoExcel(hojaCalculo, 0, contadorFilas + 1, 387 * Units.EMU_PER_PIXEL, 350 * Units.EMU_PER_PIXEL);
+
+            XSSFPicture graficoIMC = fondoIMC.createPicture(posicionadorIMC, idGraficoIMC);
+            graficoIMC.resize(1);
+
+            //Se inserta el grafico de Talla
+            int idGraficoTalla = libroTrabajo.addPicture(graficos[1], Workbook.PICTURE_TYPE_PNG);
+
+            XSSFDrawing fondoTalla = hojaCalculo.createDrawingPatriarch();
+            ClientAnchor posicionadorTalla = new SujetadorGraficoExcel(hojaCalculo, posicionadorIMC.getCol2() + 1, contadorFilas + 1, 387 * Units.EMU_PER_PIXEL, 350 * Units.EMU_PER_PIXEL);
+
+            XSSFPicture graficoTalla = fondoTalla.createPicture(posicionadorTalla, idGraficoTalla);
+            graficoTalla.resize(1);
+
+            //Se inserta el grafico de Talla
+            int idGraficoPeso = libroTrabajo.addPicture(graficos[2], Workbook.PICTURE_TYPE_PNG);
+
+            XSSFDrawing fondoPeso = hojaCalculo.createDrawingPatriarch();
+            ClientAnchor posicionadorPeso = new SujetadorGraficoExcel(hojaCalculo, posicionadorTalla.getCol2() + 1, contadorFilas + 1, 387 * Units.EMU_PER_PIXEL, 350 * Units.EMU_PER_PIXEL);
+
+            XSSFPicture graficoPeso = fondoPeso.createPicture(posicionadorPeso, idGraficoPeso);
+            graficoPeso.resize(1);
+
+            hojaCalculo.addIgnoredErrors(new CellRangeAddress(0, 15, 0, 10), IgnoredErrorType.NUMBER_STORED_AS_TEXT);
+
             ByteArrayOutputStream salida = new ByteArrayOutputStream();
 
             libroTrabajo.write(salida);
@@ -352,79 +364,87 @@ public class SISVANUtils {
         }
     }
     
+    public static String normalizarColumna(String columna) {
+        String nombreColumna = "";
+        for (String componente : columna.split("_")) {
+            nombreColumna += " " + componente.substring(0, 1).toUpperCase() + componente.substring(1);
+        }
+        return nombreColumna.replaceFirst(" ", "");
+    }
+    
     public static byte[] generarExcelGrupal(String desde, String hasta, String id_escuela) throws NamingException, SQLException, IOException {
-        XSSFWorkbook libroTrabajo = new XSSFWorkbook();
-        XSSFSheet hojaCalculo = libroTrabajo.createSheet("Antropometria");
-        DataSource datasource;
-        String query = "SELECT DATE_FORMAT(datos.fecha, '%d/%m/%Y') 'Fecha Medición', escuelas.nombre 'Escuela', \n" +
-                        "calcular_grado(grupos.anio_ingreso, datos.fecha) 'Grado', grupos.letra 'Grupo', alumnos.id_alumno 'Identificador Alumno', \n" +
-                        "upper(CONCAT(alumnos.apellido_p, ' ', alumnos.apellido_m, ' ', alumnos.nombre)) 'Nombre Alumno', \n" +
-                        "upper(alumnos.sexo) 'Sexo',\n" +
-                        "DATE_FORMAT(alumnos.fecha_nac, '%d/%m/%Y') 'Fecha de Nacimiento',\n" +
-                        "datos.masa 'Peso',\n" +
-                        "datos.estatura 'Talla',\n" +
-                        "datos.imc 'IMC',\n" +
-                        "datos.perimetro_cuello 'Perimetro Cuello',\n" +
-                        "datos.cintura 'Cintura',\n" +
-                        "datos.triceps 'Triceps',\n" +
-                        "datos.subescapula 'Subescapular',\n" +
-                        "datos.pliegue_cuello 'Pliegue Cuello'\n" +
-                        "FROM datos INNER JOIN alumnos ON datos.id_alumno = alumnos.id_alumno\n" +
-                        "INNER JOIN grupos on alumnos.id_grupo = grupos.id_grupo \n" +
-                        "INNER JOIN escuelas ON grupos.id_escuela = escuelas.id_escuela\n" +
-                        "WHERE grupos.id_escuela = ? AND datos.fecha between ? and ?";
+        try(XSSFWorkbook libroTrabajo = new XSSFWorkbook()){
+            XSSFSheet hojaCalculo = libroTrabajo.createSheet("Antropometria");
+            DataSource datasource;
+            String query = "SELECT DATE_FORMAT(datos.fecha, '%d/%m/%Y') 'Fecha Medición', escuelas.nombre 'Escuela', \n" +
+                            "calcular_grado(grupos.anio_ingreso, datos.fecha) 'Grado', grupos.letra 'Grupo', alumnos.id_alumno 'Identificador Alumno', \n" +
+                            "upper(CONCAT(alumnos.apellido_p, ' ', alumnos.apellido_m, ' ', alumnos.nombre)) 'Nombre Alumno', \n" +
+                            "upper(alumnos.sexo) 'Sexo',\n" +
+                            "DATE_FORMAT(alumnos.fecha_nac, '%d/%m/%Y') 'Fecha de Nacimiento',\n" +
+                            "datos.masa 'Peso',\n" +
+                            "datos.estatura 'Talla',\n" +
+                            "datos.imc 'IMC',\n" +
+                            "datos.perimetro_cuello 'Perimetro Cuello',\n" +
+                            "datos.cintura 'Cintura',\n" +
+                            "datos.triceps 'Triceps',\n" +
+                            "datos.subescapula 'Subescapular',\n" +
+                            "datos.pliegue_cuello 'Pliegue Cuello'\n" +
+                            "FROM datos INNER JOIN alumnos ON datos.id_alumno = alumnos.id_alumno\n" +
+                            "INNER JOIN grupos on alumnos.id_grupo = grupos.id_grupo \n" +
+                            "INNER JOIN escuelas ON grupos.id_escuela = escuelas.id_escuela\n" +
+                            "WHERE grupos.id_escuela = ? AND datos.fecha between ? and ?";
 
-        //Encontrar la clase para poder realizar la conexión con RDS
-        datasource = (DataSource) new InitialContext().lookup(DB_JNDI);
-        
-        Row nombresColumnas = hojaCalculo.createRow(0);
-        int contadorFilas = 1;
-        
-        XSSFFont letraEncabezados = libroTrabajo.createFont();
-        letraEncabezados.setFontName("Calibri");
-        letraEncabezados.setFontHeightInPoints((byte) 10);
-        letraEncabezados.setBold(true);
-                
-        CellStyle estiloColumnas = libroTrabajo.createCellStyle();
-        estiloColumnas.setFillForegroundColor(IndexedColors.PALE_BLUE.getIndex());
-        estiloColumnas.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-        estiloColumnas.setFont(letraEncabezados);
-        estiloColumnas.setAlignment(HorizontalAlignment.CENTER);
-        
-        CellStyle estiloFilas = libroTrabajo.createCellStyle();
-        XSSFFont letraFilas = libroTrabajo.createFont();
-        letraFilas.setFontName("Calibri");
-        letraFilas.setFontHeightInPoints((byte) 10);
-        estiloFilas.setFont(letraFilas);
-        estiloFilas.setAlignment(HorizontalAlignment.CENTER);
-        
-        CellStyle estiloFilasEspeciales  = libroTrabajo.createCellStyle();
-        estiloFilasEspeciales.setFont(letraFilas);
-        
-        try (Connection dbConnection = datasource.getConnection();
-                PreparedStatement statement = dbConnection.prepareStatement(query)) {
+            //Encontrar la clase para poder realizar la conexión con RDS
+            datasource = (DataSource) new InitialContext().lookup(DB_JNDI);
 
-            statement.setString(1, id_escuela);
-            statement.setString(2, desde);
-            statement.setString(3, hasta);
+            Row nombresColumnas = hojaCalculo.createRow(0);
+            int contadorFilas = 1;
 
-            try (ResultSet resultado = statement.executeQuery()) {
-                ResultSetMetaData metaDatos = resultado.getMetaData();
-                int contadorColumnas = metaDatos.getColumnCount();
-                
-                while (resultado.next()) {
-                    Row fila = hojaCalculo.createRow(contadorFilas++);
-                    for(int indiceColumna = 1; indiceColumna < contadorColumnas; indiceColumna++) {
-                        Cell celda = fila.createCell(indiceColumna-1);
-                        
-                        if (metaDatos.getColumnLabel(indiceColumna).equals("Nombre Alumno")
-                                || metaDatos.getColumnLabel(indiceColumna).equals("Sexo")) {
-                            celda.setCellStyle(estiloFilasEspeciales);
-                        } else {
-                            celda.setCellStyle(estiloFilas);
-                        }
-                        
-                        Object valor = resultado.getObject(indiceColumna);
+            XSSFFont letraEncabezados = libroTrabajo.createFont();
+            letraEncabezados.setFontName("Calibri");
+            letraEncabezados.setFontHeightInPoints((byte) 10);
+            letraEncabezados.setBold(true);
+
+            CellStyle estiloColumnas = libroTrabajo.createCellStyle();
+            estiloColumnas.setFillForegroundColor(IndexedColors.PALE_BLUE.getIndex());
+            estiloColumnas.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            estiloColumnas.setFont(letraEncabezados);
+            estiloColumnas.setAlignment(HorizontalAlignment.CENTER);
+
+            CellStyle estiloFilas = libroTrabajo.createCellStyle();
+            XSSFFont letraFilas = libroTrabajo.createFont();
+            letraFilas.setFontName("Calibri");
+            letraFilas.setFontHeightInPoints((byte) 10);
+            estiloFilas.setFont(letraFilas);
+            estiloFilas.setAlignment(HorizontalAlignment.CENTER);
+
+            CellStyle estiloFilasEspeciales = libroTrabajo.createCellStyle();
+            estiloFilasEspeciales.setFont(letraFilas);
+
+            try (Connection dbConnection = datasource.getConnection();
+                    PreparedStatement statement = dbConnection.prepareStatement(query)) {
+
+                statement.setString(1, id_escuela);
+                statement.setString(2, desde);
+                statement.setString(3, hasta);
+
+                try (ResultSet resultado = statement.executeQuery()) {
+                    ResultSetMetaData metaDatos = resultado.getMetaData();
+                    int contadorColumnas = metaDatos.getColumnCount();
+
+                    while (resultado.next()) {
+                        Row fila = hojaCalculo.createRow(contadorFilas++);
+                        for (int indiceColumna = 1; indiceColumna < contadorColumnas; indiceColumna++) {
+                            Cell celda = fila.createCell(indiceColumna - 1);
+
+                            if (metaDatos.getColumnLabel(indiceColumna).equals("Nombre Alumno")
+                                    || metaDatos.getColumnLabel(indiceColumna).equals("Sexo")) {
+                                celda.setCellStyle(estiloFilasEspeciales);
+                            } else {
+                                celda.setCellStyle(estiloFilas);
+                            }
+
+                            Object valor = resultado.getObject(indiceColumna);
                             if (valor instanceof String) {
                                 celda.setCellValue(resultado.getString(indiceColumna));
                             } else if (valor instanceof Integer) {
@@ -432,27 +452,28 @@ public class SISVANUtils {
                             } else {
                                 celda.setCellValue(resultado.getDouble(indiceColumna));
                             }
+                        }
                     }
+
+                    for (int indiceColumna = 1; indiceColumna < contadorColumnas; indiceColumna++) {
+                        Cell celdaEncabezado = nombresColumnas.createCell(indiceColumna - 1);
+                        celdaEncabezado.setCellValue(metaDatos.getColumnLabel(indiceColumna));
+                        celdaEncabezado.setCellStyle(estiloColumnas);
+                        hojaCalculo.autoSizeColumn(indiceColumna - 1);
+                    }
+
+                } catch (SQLException excepcion) {
+                    throw excepcion;
                 }
-                
-                for(int indiceColumna = 1; indiceColumna < contadorColumnas; indiceColumna++) {
-                    Cell celdaEncabezado = nombresColumnas.createCell(indiceColumna-1);
-                    celdaEncabezado.setCellValue(metaDatos.getColumnLabel(indiceColumna));
-                    celdaEncabezado.setCellStyle(estiloColumnas);                    
-                    hojaCalculo.autoSizeColumn(indiceColumna-1);
-                }
-                
-            } catch (SQLException excepcion) {
-                throw excepcion;
             }
+
+            ByteArrayOutputStream salida = new ByteArrayOutputStream();
+
+            libroTrabajo.write(salida);
+            libroTrabajo.close();
+
+            return salida.toByteArray();
         }
-        
-        ByteArrayOutputStream salida = new ByteArrayOutputStream();
-
-        libroTrabajo.write(salida);
-        libroTrabajo.close();
-
-        return salida.toByteArray();
     }
 
     public static JsonObject generarJSONGraficoLinea(String query, String idAlumno, String nombreSerieX, boolean redondear) {
@@ -474,7 +495,15 @@ public class SISVANUtils {
 
         try (Connection dbConnection = datasource.getConnection();
                 PreparedStatement statement = dbConnection.prepareStatement(query)) {
-            statement.setString(1, idAlumno);
+            AtomicInteger paramCounter = new AtomicInteger(0);
+                        
+            query.chars().filter(ch -> ch == '?').forEach((int count) -> {
+                try {
+                    statement.setString(paramCounter.incrementAndGet(), idAlumno);
+                } catch (SQLException exception) {
+                    System.out.println(exception.getMessage());
+                }
+            });
 
             try (ResultSet result = statement.executeQuery()) {
                 JsonArrayBuilder constructorArregloJSON

@@ -223,13 +223,13 @@ BEGIN
     DECLARE diagnostico varchar(25);
 	
 	IF puntaje_z < -2.0 THEN
-		SET diagnostico = 'Bajo peso';
+		SET diagnostico = 'BAJO PESO';
 	ELSEIF puntaje_z <= 1.0 THEN
-		SET diagnostico = "Sin exceso de peso";
+		SET diagnostico = "SIN EXCESO DE PESO";
 	ELSEIF puntaje_z > 1.0 AND puntaje_z <= 2.0 THEN
-		SET diagnostico = "Sobrepeso";
+		SET diagnostico = "SOBREPESO";
 	ELSEIF puntaje_z > 2.0 THEN
-		SET diagnostico = "Obesidad";
+		SET diagnostico = "OBESIDAD";
 	END IF;
 
 RETURN diagnostico;
@@ -275,9 +275,9 @@ BEGIN
     DECLARE diagnostico varchar(25);
 
 	IF puntaje_z < -2.0 THEN
-		SET diagnostico = 'Con talla baja';
+		SET diagnostico = 'CON TALLA BAJA';
 	ELSE 
-		SET diagnostico = 'Sin talla baja';
+		SET diagnostico = 'SIN TALLA BAJA';
 	END IF;
 
 RETURN diagnostico;
@@ -329,9 +329,9 @@ BEGIN
 	IF puntaje_z IS NULL THEN
 		SET diagnostico = NULL;
 	ELSEIF puntaje_z < -2.0 THEN
-		SET diagnostico = 'Con peso bajo';
+		SET diagnostico = 'CON PESO BAJO';
 	ELSE 
-		SET diagnostico = 'Sin peso bajo';
+		SET diagnostico = 'SIN PESO BAJO';
 	END IF;
 
 RETURN diagnostico;
