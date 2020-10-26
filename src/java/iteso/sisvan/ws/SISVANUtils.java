@@ -591,7 +591,8 @@ public class SISVANUtils {
                             = Json.createObjectBuilder();
 
                     alumno.add("id", contador++);
-                    alumno.add("serie", result.getString(2));
+                    alumno.add("serie", result.getString(2) != null ? 
+                            result.getString(2) : "NO APLICABLE");
                     alumno.add(nombreSerieX, result.getString(1));
                     alumno.add("valor", result.getInt(3));
                     constructorArregloJSON.add(alumno);

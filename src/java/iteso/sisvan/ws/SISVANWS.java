@@ -876,12 +876,15 @@ public class SISVANWS {
             @QueryParam("diagnostico") String diagnostico) {
         String columnaDiagnostico = diagnostico.equals("talla") ? "diagnostico_talla" : diagnostico.equals("peso") ? "diagnostico_peso" : "diagnostico_imc";
         
-        String query = "SELECT concat('Escuela ', id_grupo) as grupo, diagnostico, COUNT(*) as value \n"
-                + "FROM (SELECT alumnos.id_grupo, alumnos.id_alumno, ROUND(masa) as masa, timestampdiff(MONTH, alumnos.fecha_nac, d.fecha) as meses, sexo, d." + columnaDiagnostico + " as diagnostico FROM datos d INNER JOIN alumnos\n"
-                + "ON alumnos.id_alumno = d.id_alumno\n"
-                + "WHERE d.fecha between ? and ? \n"
-                + "AND d.id_grupo IN (SELECT id_grupo FROM grupos WHERE id_escuela = ?)) subdatos\n"
-                + "GROUP BY diagnostico;";
+        String query = "SELECT concat('Escuela ', nombre_escuela) as escuela, diagnostico, COUNT(*) as value\n"
+                    + "FROM (SELECT escuelas.nombre as nombre_escuela, alumnos.id_grupo, alumnos.id_alumno, ROUND(masa) as masa, timestampdiff(MONTH, alumnos.fecha_nac, d.fecha) as meses, sexo, d." + columnaDiagnostico + " as diagnostico \n"
+                    + "FROM datos d \n"
+                    + "INNER JOIN alumnos ON alumnos.id_alumno = d.id_alumno\n"
+                    + "INNER JOIN grupos ON grupos.id_grupo = alumnos.id_grupo\n"
+                    + "INNER JOIN escuelas ON escuelas.id_escuela = grupos.id_escuela\n"
+                    + "WHERE d.fecha between ?  and ?\n"
+                    + "AND d.id_grupo IN (SELECT id_grupo FROM grupos WHERE id_escuela = ?)) subdatos\n"
+                    + "GROUP BY diagnostico";
 
         return Response.ok(SISVANUtils.generarJSONGraficoPastel(query, id_escuela, desde, hasta, "escuela").toString()).header("Access-Control-Allow-Origin", "*").build();
     }
