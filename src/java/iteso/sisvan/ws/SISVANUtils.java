@@ -8,6 +8,7 @@ package iteso.sisvan.ws;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.StringReader;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -139,12 +140,6 @@ public class SISVANUtils {
             svg = svg.replace(aux, newFormat);
         }
         return svg;
-    }
-    
-    public static void main(String... args) {
-        int contador = 0;
-        int test = contador++;
-        System.out.println(contador + " " + test);
     }
 
     public static byte[] generarExcelConJSON(JsonObject jsonEntrada, byte[][] graficos) {

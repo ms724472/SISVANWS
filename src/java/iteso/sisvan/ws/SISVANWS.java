@@ -11,6 +11,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -42,11 +43,6 @@ import javax.ws.rs.core.Response.ResponseBuilder;
 import org.apache.batik.transcoder.TranscoderInput;
 import org.apache.batik.transcoder.TranscoderOutput;
 import org.apache.batik.transcoder.image.PNGTranscoder;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.PDPageContentStream;
-import org.apache.pdfbox.pdmodel.font.PDType1Font;
-import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 
 /**
  * REST Web Service
@@ -681,7 +677,7 @@ public class SISVANWS {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/obtenerRangos")
     public Response obtenerRangos() {
-        String query = "SELECT obtener_rangos(MIN(fecha), true) as desde, obtener_rangos(MIN(fecha), false) as hasta \n" +
+        String query = "SELECT DATE_FORMAT(MAX(fecha), \"%Y-%m-%d\") as desde, obtener_rangos(MIN(fecha), false) as hasta \n" +
                        "FROM datos \n" +
                        "WHERE fecha between obtener_rangos((SELECT MAX(fecha) from datos), true) AND obtener_rangos((SELECT MAX(fecha) from datos), false)";
         return Response.ok(SISVANUtils.generarJSONMultiTipoDatos(query, "", "rangos", false).toString()).header("Access-Control-Allow-Origin", "*").build();
@@ -756,12 +752,8 @@ public class SISVANWS {
             response = jsonObjectBuilder.build();
         }
 
-        return Response.ok(response.toString()).build();               
+        return Response.ok(response.toString()).header("Access-Control-Allow-Origin", "*").build();               
     }    
-    
-    public static void main(String... args) {
-        System.out.println("masa as peso".split("as ")[1]);
-    }
     
     /**
      * Obtener el historico de la imc del alumno
@@ -849,8 +841,8 @@ public class SISVANWS {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/alumnos/obtenerMediciones/{idAlumno}")
     public Response obtenerMediciones(@PathParam("idAlumno") String idAlumno) {
-        String query = "SELECT datos.*, timestampdiff(MONTH, alumnos.fecha_nac, datos.fecha) as meses, " + "\n"
-                + "CONCAT(CONCAT(calcular_grado(grupos.anio_ingreso, datos.fecha), ' '), grupos.letra) as grupo " + "\n"
+        String query = "SELECT timestampdiff(MONTH, alumnos.fecha_nac, datos.fecha) as meses, " + "\n"
+                + "CONCAT(CONCAT(calcular_grado(grupos.anio_ingreso, datos.fecha), ' '), grupos.letra) as grupo, datos.* " + "\n"
                 + "FROM datos JOIN alumnos ON datos.id_alumno = alumnos.id_alumno" + "\n"
                 + "JOIN grupos ON datos.id_grupo = grupos.id_grupo" + "\n"
                 + "WHERE alumnos.id_alumno = ?";
@@ -887,6 +879,31 @@ public class SISVANWS {
                     + "GROUP BY diagnostico";
 
         return Response.ok(SISVANUtils.generarJSONGraficoPastel(query, id_escuela, desde, hasta, "escuela").toString()).header("Access-Control-Allow-Origin", "*").build();
+    }
+    
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("escolares/obtenerHistoricoEscuela/{medicion}/{idEscuela}")
+    public Response obtenerPorcentajesEscuela(@PathParam("medicion") String medicion, @PathParam("idEscuela") String idEscuela) {
+        String prefijoQuery;
+        switch(medicion) {
+            case "talla":
+                prefijoQuery = "SELECT fecha, SUM(if(diagnostico_talla = \"CON TALLA BAJA\", 1, 0)) AS con_talla_baja,  SUM(if(diagnostico_talla = \"SIN TALLA BAJA\", 1, 0)) AS sin_talla_baja\n";
+                break;
+            case "peso":
+                prefijoQuery = "SELECT fecha, SUM(if(diagnostico_peso = \"CON PESO BAJO\", 1, 0)) AS con_peso_bajo,  SUM(if(diagnostico_peso = \"SIN PESO BAJO\", 1, 0)) AS sin_peso_bajo\n";
+                break;
+            default:
+                prefijoQuery = "SELECT fecha, SUM(if(diagnostico_imc = \"BAJO PESO\", 1, 0)) AS bajo_peso,   SUM(if(diagnostico_imc = \"SIN EXCESO DE PESO\", 1, 0)) AS sin_exceso_de_peso, SUM(if(diagnostico_imc = \"OBESIDAD\", 1, 0)) AS obesidad, SUM(if(diagnostico_imc = \"SOBREPESO\", 1, 0)) AS sobrepeso\n";
+                break;
+        }
+        
+        String query = prefijoQuery
+                + "FROM datos INNER JOIN grupos ON datos.id_grupo = grupos.id_grupo\n"
+                + "WHERE id_escuela = ?\n"
+                + "GROUP BY fecha ORDER BY fecha";
+        
+        return Response.ok(SISVANUtils.generarJSONGraficoLinea(query, idEscuela, "fecha", false).toString()).header("Access-Control-Allow-Origin", "*").build();
     }
 
     /**
@@ -953,6 +970,53 @@ public class SISVANWS {
                 + "ORDER BY mes";
 
         return Response.ok(SISVANUtils.generarJSONGraficoLinea(query, sexo, "mes", false).toString()).header("Access-Control-Allow-Origin", "*").build();
+    }
+    
+    /**
+     * Obtener todos los alumnos de una escuela dada
+     *
+     * @param idEscuela identificador unico de la escuela
+     * @return json con toda la lista de alumnos por escuela
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/escuelas/obtenerAlumnos/{idEscuela}")
+    public Response obtenerAlumnos(@PathParam("idEscuela") String idEscuela) {
+        String query = "SELECT id_alumno FROM alumnos \n" +
+                       "INNER JOIN grupos ON alumnos.id_grupo = grupos.id_grupo\n" +
+                       "WHERE id_escuela = ? AND (calcular_grado(grupos.anio_ingreso, CURDATE()) <= 7);";
+        JsonObjectBuilder constructorRespuesta = Json.createObjectBuilder();
+        JsonArrayBuilder constructorLista = Json.createArrayBuilder();
+
+        JsonObject jsonAlumnos = SISVANUtils.generarJSONMultiTipoDatos(query, idEscuela, "alumnos", true);
+        
+        for(JsonValue alumno : jsonAlumnos.getJsonArray("alumnos")) {
+            JsonObject alumnoActual = (JsonObject) alumno;
+            JsonObjectBuilder alumnoRespuesta = Json.createObjectBuilder();
+            String idAlumno = String.valueOf(alumnoActual.getInt("id_alumno"));
+            JsonObject datosAlumno = Json.createReader(new StringReader(obtenerDatos(idAlumno)
+                .getEntity().toString())).readObject();
+            
+            JsonObject medicionesAlumno = Json.createReader(new StringReader(obtenerMediciones(idAlumno)
+                .getEntity().toString())).readObject();
+            
+            alumnoRespuesta.add("id_alumno", idAlumno);
+            alumnoRespuesta.add("datos", datosAlumno.getJsonArray("datos").getJsonObject(0));
+            
+            if(medicionesAlumno.containsKey("error")) {
+                JsonArrayBuilder medicionesVacia = Json.createArrayBuilder();
+                alumnoRespuesta.add("mediciones", medicionesVacia);
+            } else {
+                alumnoRespuesta.add("mediciones", medicionesAlumno.getJsonArray("mediciones"));
+            }
+            
+            
+            constructorLista.add(alumnoRespuesta);            
+        } 
+        
+        constructorRespuesta.add("alumnos", constructorLista);
+                
+        return Response.ok(constructorRespuesta.build().toString()).header("Access-Control-Allow-Origin", "*").build();
     }
 
     @GET
