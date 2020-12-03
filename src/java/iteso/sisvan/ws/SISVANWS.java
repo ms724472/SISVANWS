@@ -458,10 +458,14 @@ public class SISVANWS {
                     JsonObject alumno = alumnosInsertar.getJsonObject(indiceAlumno);
                      try (PreparedStatement statement = dbConnection.prepareStatement(queryInsertarAlumno)) {
                          int numColumna = 1;
+                         int resultado;
                          for(String columna : alumno.keySet()) {
-                             statement.setString(numColumna++, columna);
+                             statement.setString(numColumna++, alumno.getString(columna));
                          }
-                         if(statement.executeUpdate() != 1){
+                         
+                         resultado = statement.executeUpdate();
+                         if(resultado != 1){
+                             System.out.println("Falla en sincronizacion insertar alumno: " + alumno.toString());
                              throw new SQLException("Base de datos corrupta.");
                          } 
                      }                                    
@@ -472,10 +476,15 @@ public class SISVANWS {
                     JsonObject alumno = alumnosActualizar.getJsonObject(indiceAlumno);
                      try (PreparedStatement statement = dbConnection.prepareStatement(queryActualizarAlumno)) {
                          int numColumna = 1;
+                         int resultado;
+                         
                          for(String columna : alumno.keySet()) {
-                             statement.setString(numColumna++, columna);
+                             statement.setString(numColumna++, alumno.getString(columna));
                          }
-                         if(statement.executeUpdate() != 1){
+                         
+                         resultado = statement.executeUpdate();
+                         if(resultado != 1){
+                             System.out.println("Falla en sincronizacion actualizar alumno: " + alumno.toString());
                              throw new SQLException("Base de datos corrupta.");
                          } 
                      }    
@@ -486,10 +495,14 @@ public class SISVANWS {
                     JsonObject medicion = datosInsertar.getJsonObject(indiceDato);
                      try (PreparedStatement statement = dbConnection.prepareStatement(queryInsertarMedicion)) {
                          int numColumna = 1;
+                         int resultado;
                          for(String columna : medicion.keySet()) {
-                             statement.setString(numColumna++, columna);
+                             statement.setString(numColumna++, medicion.getString(columna));
                          }
-                         if(statement.executeUpdate() != 1){
+                         
+                         resultado = statement.executeUpdate();
+                         if(resultado != 1){
+                             System.out.println("Falla en sincronizacion insertar medicion: " + medicion.toString());
                              throw new SQLException("Base de datos corrupta.");
                          } 
                      }    
@@ -500,12 +513,16 @@ public class SISVANWS {
                     JsonObject medicion = datosActualizar.getJsonObject(indiceDato);
                      try (PreparedStatement statement = dbConnection.prepareStatement(queryActualizarMedicion)) {
                          int numColumna = 1;
+                         int resultado;
                          for(String columna : medicion.keySet()) {
-                             statement.setString(numColumna++, columna);
+                             statement.setString(numColumna++, medicion.getString(columna));
                          }
-                         if(statement.executeUpdate() != 1){
+                         
+                         resultado = statement.executeUpdate();
+                         if(resultado != 1){
+                             System.out.println("Falla en sincronizacion actualizar medicion: " + medicion.toString());
                              throw new SQLException("Base de datos corrupta.");
-                         } 
+                         }  
                      }   
                 }
                 
