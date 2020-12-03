@@ -25,6 +25,7 @@ import javax.ws.rs.core.Response;
 import java.sql.*;
 import java.util.Arrays;
 import java.util.List;
+import javax.json.JsonArray;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObjectBuilder;
 import javax.json.JsonReader;
@@ -379,6 +380,154 @@ public class SISVANWS {
 
         return Response.ok(respuestaInserccion.toString()).header("Access-Control-Allow-Origin", "*").build();
     }
+    
+    @POST
+    @Path("sincronizarDatosMasivos")
+    public Response sincronizarDatosMasivos(String datosMasivos) {
+        JsonObject datosJSON = Json.createReader(new StringReader(datosMasivos)).readObject(); 
+        JsonArray alumnosInsertar = datosJSON.getJsonArray("alumnosInsertar");
+        JsonArray alumnosActualizar = datosJSON.getJsonArray("alumnosActualizar");
+        JsonArray datosInsertar = datosJSON.getJsonArray("datosInsertar");
+        JsonArray datosActualizar = datosJSON.getJsonArray("datosActualizar");
+        DataSource datasource;
+        
+        final String queryInsertarAlumno = "INSERT INTO alumnos(id_alumno, " + "\n"
+                + "nombre," + "\n"
+                + "apellido_p," + "\n"
+                + "apellido_m," + "\n"
+                + "sexo," + "\n"
+                + "fecha_nac," + "\n"
+                + "id_grupo)" + "\n"
+                + "VALUES(?,?,?,?,?,?,?)";
+        
+        final String queryActualizarAlumno = "UPDATE alumnos SET\n"
+                + "nombre = ?,\n"
+                + "apellido_p = ?,\n"
+                + "apellido_m = ?,\n"
+                + "sexo = ?,\n"
+                + "fecha_nac = ?,\n"
+                + "id_grupo = ?\n"
+                + "WHERE id_alumno = ?";
+        
+        final String queryInsertarMedicion = "INSERT INTO datos(id_alumno,\n"
+                + "id_grupo,\n"
+                + "fecha,\n"
+                + "masa,\n"                
+                + "diagnostico_peso,\n"
+                + "z_peso,\n"
+                + "estatura,\n"
+                + "diagnostico_talla,\n"
+                + "z_talla,\n"
+                + "diagnostico_imc,\n"
+                + "z_imc,\n"
+                + "perimetro_cuello,\n"
+                + "cintura, triceps,\n"
+                + "subescapula,\n"
+                + "pliegue_cuello)\n"
+                + "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        
+        final String queryActualizarMedicion = "UPDATE datos SET\n"
+                + "id_grupo = ?,\n"
+                + "masa = ?,\n"                
+                + "diagnostico_peso = ?,\n"
+                + "z_peso = ?,\n"
+                + "estatura = ?,\n"
+                + "diagnostico_talla = ?,\n"
+                + "z_talla = ?,\n"
+                + "diagnostico_imc = ?,\n"
+                + "z_imc = ?,\n"
+                + "perimetro_cuello = ?,\n"
+                + "cintura = ?, triceps = ?,\n"
+                + "subescapula = ?,\n"
+                + "pliegue_cuello = ?\n"
+                + "WHERE id_alumno = ? AND fecha = ?";
+        
+        try {
+            datasource = (DataSource) new InitialContext().lookup(DB_JNDI);
+        } catch (NamingException excepcion) {
+            System.out.println("Falla en base de datos:" + excepcion.getMessage());
+            return Response.serverError().header("Access-Control-Allow-Origin", "*").build();
+        }
+        
+        try (Connection dbConnection = datasource.getConnection()) {
+            dbConnection.setAutoCommit(false);
+            
+            try {
+                // Agregar alumnos que hayan sido creados en la aplicacion móvil.
+                for (int indiceAlumno = 0; indiceAlumno < alumnosInsertar.size(); indiceAlumno++) {
+                    JsonObject alumno = alumnosInsertar.getJsonObject(indiceAlumno);
+                     try (PreparedStatement statement = dbConnection.prepareStatement(queryInsertarAlumno)) {
+                         int numColumna = 1;
+                         for(String columna : alumno.keySet()) {
+                             statement.setString(numColumna++, columna);
+                         }
+                         if(statement.executeUpdate() != 1){
+                             throw new SQLException("Base de datos corrupta.");
+                         } 
+                     }                                    
+                }
+
+                // Actualizar alumnos que hayan sido modificados en la aplicacion móvil.
+                for (int indiceAlumno = 0; indiceAlumno < alumnosActualizar.size(); indiceAlumno++) {
+                    JsonObject alumno = alumnosActualizar.getJsonObject(indiceAlumno);
+                     try (PreparedStatement statement = dbConnection.prepareStatement(queryActualizarAlumno)) {
+                         int numColumna = 1;
+                         for(String columna : alumno.keySet()) {
+                             statement.setString(numColumna++, columna);
+                         }
+                         if(statement.executeUpdate() != 1){
+                             throw new SQLException("Base de datos corrupta.");
+                         } 
+                     }    
+                }
+
+                //Insertar datos que hayan sido modificados en la aplicacion movil.
+                for (int indiceDato = 0; indiceDato < datosInsertar.size(); indiceDato++) {
+                    JsonObject medicion = datosInsertar.getJsonObject(indiceDato);
+                     try (PreparedStatement statement = dbConnection.prepareStatement(queryInsertarMedicion)) {
+                         int numColumna = 1;
+                         for(String columna : medicion.keySet()) {
+                             statement.setString(numColumna++, columna);
+                         }
+                         if(statement.executeUpdate() != 1){
+                             throw new SQLException("Base de datos corrupta.");
+                         } 
+                     }    
+                }
+
+                // Actualizacion de datos que hayan sido modificados en la aplicacion movil.
+                for (int indiceDato = 0; indiceDato < datosActualizar.size(); indiceDato++) {
+                    JsonObject medicion = datosActualizar.getJsonObject(indiceDato);
+                     try (PreparedStatement statement = dbConnection.prepareStatement(queryActualizarMedicion)) {
+                         int numColumna = 1;
+                         for(String columna : medicion.keySet()) {
+                             statement.setString(numColumna++, columna);
+                         }
+                         if(statement.executeUpdate() != 1){
+                             throw new SQLException("Base de datos corrupta.");
+                         } 
+                     }   
+                }
+                
+                dbConnection.commit();
+            } catch (SQLException excepcion) {
+                dbConnection.rollback();
+                throw excepcion;
+            }
+        } catch(SQLException excepcion) {
+            String mensajeExcepcion = excepcion.getMessage();
+            if(mensajeExcepcion.equals("Base de datos corrupta.")) {
+                return Response.notAcceptable(null).header("Access-Control-Allow-Origin", "*").build();
+            } else {                
+                System.out.println("Falla en base de datos:" + mensajeExcepcion);
+                return Response.serverError().header("Access-Control-Allow-Origin", "*").build();
+            }
+        } 
+        return Response.ok().header("Access-Control-Allow-Origin", "*").build();
+    }
+    
+    public static void main(String... args) {
+    }
 
     /**
      * 
@@ -404,7 +553,6 @@ public class SISVANWS {
         for (String grafico : graficos) {
             InputStream svgStream = new ByteArrayInputStream(grafico.getBytes(StandardCharsets.UTF_8));
             TranscoderInput imagenSVG = new TranscoderInput(svgStream);
-            System.out.println(new String(grafico.getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8));
             try (ByteArrayOutputStream streamPNG = new ByteArrayOutputStream()) {
                 TranscoderOutput imagenPNG = new TranscoderOutput(streamPNG);
                 PNGTranscoder convertidor = new PNGTranscoder();
